@@ -14,6 +14,7 @@ import { PlaceInWorldProvider, ShowInWorldProvider, type PlaceInWorld, type Show
 import { QuestEditorModal } from './QuestEditorModal';
 import { ProjectDialog } from './ProjectDialog';
 import { SettingsDialog } from './SettingsDialog';
+import { TablesDialog } from '../tables/TablesDialog';
 import { RecoveryDialog } from './RecoveryDialog';
 import { IdConflictDialog } from './IdConflictDialog';
 import './AppShell.css';
@@ -27,6 +28,7 @@ export function AppShell({ store }: { store: AppStore }): React.JSX.Element {
   const [dockOpen, setDockOpen] = useState(false);
   const [showProject, setShowProject] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showTables, setShowTables] = useState(false);
   const [prefs, updatePrefs] = usePreferences();
   const questsAsked = store((s) => s.questsAsked);
   const filePath = store((s) => s.project.filePath);
@@ -128,6 +130,7 @@ export function AppShell({ store }: { store: AppStore }): React.JSX.Element {
         onToggleDock={toggleDock}
         onOpenProject={() => setShowProject(true)}
         onOpenSettings={() => setShowSettings(true)}
+        onOpenTables={() => setShowTables(true)}
       />
       <ErrorBanner store={store} />
       <HistoryNote
@@ -183,6 +186,7 @@ export function AppShell({ store }: { store: AppStore }): React.JSX.Element {
       <QuestEditorModal store={store} />
       {showProject && <ProjectDialog store={store} onClose={() => setShowProject(false)} />}
       {showSettings && <SettingsDialog store={store} onClose={() => setShowSettings(false)} />}
+      {showTables && <TablesDialog onClose={() => setShowTables(false)} />}
       <RecoveryDialog store={store} />
       <IdConflictDialog store={store} />
     </div>

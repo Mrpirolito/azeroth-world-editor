@@ -45,7 +45,7 @@ function codeOf(sql: string): string {
  * single SELECT, SHOW, DESCRIBE or EXPLAIN, that holds a comment (which can hide a second statement), or that could write.
  */
 export function readOnlySql(raw: string): string {
-  const sql = raw.trim().replace(/;+\s*$/, '');
+  const sql = raw.replace(/[;\s]+$/, '').trim();
   if (sql === '') throw new NotReadOnlyError('Type a SELECT query.');
   const code = codeOf(sql);
   if (/--|#|\/\*/.test(code)) throw new NotReadOnlyError('Comments are not allowed.');

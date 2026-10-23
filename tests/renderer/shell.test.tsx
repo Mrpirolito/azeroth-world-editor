@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createAppStore } from '../../src/renderer/state/app-store';
 import { QuestPicker } from '../../src/renderer/views/QuestPicker';
@@ -180,5 +180,16 @@ describe('the app bar layout', () => {
     expect(middle!.querySelector('button[aria-pressed="false"]')).toHaveTextContent('Quests');
     expect(middle!.querySelector('button[aria-label^="Undo"]')).not.toBeNull();
     expect(end!.querySelector('button[aria-label="Settings"]')).not.toBeNull();
+  });
+
+  it('offers Tables beside Quests, inside the middle column, when the shell can open them', async () => {
+    const store = createAppStore(makeMockApi());
+    const onOpenTables = vi.fn();
+    render(<AppBar store={store} dockOpen={false} onToggleDock={() => {}} onOpenProject={() => {}} onOpenSettings={() => {}} onOpenTables={onOpenTables} />);
+    const bar = screen.getByRole('banner');
+    expect(bar.children).toHaveLength(3);
+    const tables = within(bar.children[1] as HTMLElement).getByRole('button', { name: 'Tables' });
+    await userEvent.click(tables);
+    expect(onOpenTables).toHaveBeenCalledTimes(1);
   });
 });
