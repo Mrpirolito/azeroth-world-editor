@@ -4,6 +4,7 @@ import { fightSchema } from '../combat/model';
 import type { EntityOrigin } from './entity';
 import { npcSceneSchema } from '../scripts/npc-scenes';
 import { rowSetSchema, type RowSet } from '../tables/types';
+import { dbcEditSchema, type DbcEdit } from '../dbc/edits';
 
 /**
  * New NPCs and objects a quest needs, and where they stand. Stored in the quest's values under
@@ -418,6 +419,8 @@ export interface ProjectEntities {
   items: CustomItem[];
   /** Rows of tables with a sheet (loot, texts, addons...), held beside the entities; absent in projects saved before they existed */
   rowsets?: RowSet[];
+  /** Changes to the server's DBC files (spells...), held whole by record; absent in projects saved before they existed */
+  dbcEdits?: DbcEdit[];
 }
 
 export type QuestEntities = ProjectEntities;
@@ -428,7 +431,7 @@ export const EMPTY_ENTITIES: ProjectEntities = { npcs: [], objects: [], items: [
 export const storeSize = (store: ProjectEntities): number => store.npcs.length + store.objects.length + store.items.length + (store.rowsets?.length ?? 0);
 
 /** The schema a whole store is checked against when the window sends it. */
-export const projectEntitiesSchema = z.object({ npcs: z.array(npcSchema), objects: z.array(objectSchema), items: z.array(itemSchema), rowsets: z.array(rowSetSchema).optional() });
+export const projectEntitiesSchema = z.object({ npcs: z.array(npcSchema), objects: z.array(objectSchema), items: z.array(itemSchema), rowsets: z.array(rowSetSchema).optional(), dbcEdits: z.array(dbcEditSchema).optional() });
 
 /** Whether a stored entity was made in the project or is an existing one edited here */
 export function originOf(entity: { origin: StoredOrigin }): EntityOrigin {
@@ -440,6 +443,7 @@ const byOrigin = (store: ProjectEntities, kind: EntityOrigin): ProjectEntities =
   objects: store.objects.filter((o) => o.origin.kind === kind),
   items: store.items.filter((i) => i.origin.kind === kind),
   ...(store.rowsets ? { rowsets: store.rowsets } : {}),
+  ...(store.dbcEdits ? { dbcEdits: store.dbcEdits } : {}),
 });
 
 /** The store's entities made in the project */
@@ -464,7 +468,11 @@ const validItems = <T>(schema: z.ZodType<T>, raw: unknown): T[] =>
 export function readProjectEntities(raw: unknown): ProjectEntities {
   const record = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   const rowsets = validItems(rowSetSchema, record.rowsets);
-  return { npcs: validItems(npcSchema, record.npcs), objects: validItems(objectSchema, record.objects), items: validItems(itemSchema, record.items), ...(rowsets.length > 0 ? { rowsets } : {}) };
+  const dbcEdits = validItems(dbcEditSchema, record.dbcEdits);
+  return {
+    npcs: validItems(npcSchema, record.npcs), objects: validItems(objectSchema, record.objects), items: validItems(itemSchema, record.items),
+    ...(rowsets.length > 0 ? { rowsets } : {}), ...(dbcEdits.length > 0 ? { dbcEdits } : {}),
+  };
 }
 
 /** A quest's new NPCs, objects and items as projects before version 4 kept them; read only to move them. */
