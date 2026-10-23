@@ -7,6 +7,7 @@ import type { NavTile } from '../../core/game/navmesh';
 import type { ServerData } from '../server-data';
 import type { SpellIndex } from '../../core/game/spells';
 import type { SoundIndex } from '../../core/game/sounds';
+import type { Dbc } from '../../core/game/dbc-file';
 import type { ExtendedCostIndex } from '../../core/game/extended-costs';
 import type { QuestSortIndex } from '../../core/game/quest-sorts';
 import type { DisplayIndex } from '../../core/game/displays';
@@ -40,6 +41,8 @@ export interface Session {
   spells?: Promise<SpellIndex | { reason: string }>;
   /** The spell list once loaded, for checks that must not wait for or start a load. */
   spellsReady?: SpellIndex;
+  /** The server's DBC files held for the DBC editor, each parsed on first use (lower-case file name); a reason when the file is not there */
+  dbcFiles?: Map<string, Promise<Dbc | { reason: string }>>;
   /** Sound names, loaded on the first sound search or lookup; a reason when there are none. */
   sounds?: Promise<SoundIndex | { reason: string }>;
   /** What vendors ask for besides gold, loaded on the first search or lookup; a reason when there are none. */

@@ -7,6 +7,7 @@ import { readServerDataFile, type ServerDataFiles } from '../server-data';
 import { CAST_TIMES_FILE, RANGE_FILE, readSpellIndex, SPELL_FILE, type SpellIndex } from '../../core/game/spells';
 import { buildExtendedCostIndex, EXTENDED_COST_FILE, readExtendedCosts, type ExtendedCostIndex } from '../../core/game/extended-costs';
 import { readSoundIndex, SOUND_FILE, type SoundIndex } from '../../core/game/sounds';
+import { Dbc } from '../../core/game/dbc-file';
 import { QUEST_SORT_FILE, readQuestSorts, type QuestSortIndex } from '../../core/game/quest-sorts';
 import { DISPLAY_FILES, readCreatureDisplays, readObjectDisplays, type DisplayIndex } from '../../core/game/displays';
 import { FACTION_TEMPLATE_FILES, readFactionTemplates, type FactionTemplateIndex } from '../../core/game/faction-templates';
@@ -106,6 +107,28 @@ export function createServerFiles(deps: ApiDeps) {
       }
     })();
     return live.spells;
+  }
+
+  /** A file of the server's data folder as a `Dbc`, read on first use and kept for the session; a reason when it is not there or not a DBC */
+  function dbcOf(live: Session, file: string): Promise<Dbc | { reason: string }> {
+    const cache = (live.dbcFiles ??= new Map());
+    const key = file.toLowerCase();
+    if (!cache.has(key)) cache.set(key, readDbc(live, file));
+    return cache.get(key)!;
+  }
+
+  /** The same file read afresh, a copy nothing else holds: for writing it out with the project's edits in it */
+  function readDbc(live: Session, file: string): Promise<Dbc | { reason: string }> {
+    return (async () => {
+      const dir = live.serverData?.status.dir;
+      if (!dir) return { reason: 'The DBC editor needs the server data folder.' };
+      try {
+        const bytes = await readServerDataFile(dir, file, deps.serverDataFiles ?? NO_SERVER_DATA_FILES);
+        return bytes ? Dbc.parse(bytes, file) : { reason: `${file} is not in ${dir} or its dbc folder.` };
+      } catch (error) {
+        return { reason: `${file} could not be read: ${error instanceof Error ? error.message : String(error)}` };
+      }
+    })();
   }
 
   /** The server's sound names for this session, read on first use like the spell list. */
@@ -232,7 +255,7 @@ export function createServerFiles(deps: ApiDeps) {
       return names.length > 0 ? { ...h, detail: `used by ${names.join(', ')}` } : h;
     });
   }
-  return { terrainAt, navTileAt, spellsOf, soundsOf, extendedCostsOf, questSortsOf, lookOf, isLookKind, lookHits };
+  return { terrainAt, navTileAt, spellsOf, dbcOf, readDbc, soundsOf, extendedCostsOf, questSortsOf, lookOf, isLookKind, lookHits };
 }
 
 export type ServerFiles = ReturnType<typeof createServerFiles>;

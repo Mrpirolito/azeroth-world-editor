@@ -17,6 +17,7 @@ import { createLoreApi } from './lore-api';
 import { createAuthoringApi } from './authoring-api';
 import { createIdsApi } from './ids-api';
 import { createTablesApi } from './tables-api';
+import { createDbcApi } from './dbc-api';
 import type { ApiDeps } from './deps';
 import { createServices } from './services';
 
@@ -35,6 +36,7 @@ export type { DevDb } from '../../core/db/dev-db';
  */
 export function createApi(deps: ApiDeps): Api {
   const services = createServices(deps);
+  const exportApi = createExportApi(services);
 
   return {
     ...createConnectionApi(services),
@@ -46,7 +48,7 @@ export function createApi(deps: ApiDeps): Api {
     ...createSpawnGroupsApi(services),
     ...createWoodcuttingApi(services),
     ...createHistoryApi(services),
-    ...createExportApi(services),
+    ...exportApi,
     ...createProjectApi(services),
     ...createMcpApi(deps),
     ...createDebugApi(deps),
@@ -55,5 +57,6 @@ export function createApi(deps: ApiDeps): Api {
     ...createAuthoringApi(services),
     ...createIdsApi(services),
     ...createTablesApi(services),
+    ...createDbcApi(services, exportApi.exportProject),
   };
 }

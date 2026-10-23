@@ -142,6 +142,7 @@ function buildDeps(
     openDevDb: (p) => openMysqlDevDb(p),
     fs: {
       writeFile: (path, text) => writeFile(path, text, 'utf8'),
+      writeBytes: (path, bytes) => writeFile(path, bytes),
       ensureDir: async (path) => {
         await mkdir(path, { recursive: true });
       },

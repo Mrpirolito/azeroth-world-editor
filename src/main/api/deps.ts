@@ -25,6 +25,8 @@ export interface ApiDeps {
   openDevDb(p: ProfileInput): Promise<DevDb>;
   fs: {
     writeFile(path: string, text: string): Promise<void>;
+    /** Writes binary files (DBC files, the client patch archive); absent where the build cannot */
+    writeBytes?(path: string, bytes: Uint8Array): Promise<void>;
     ensureDir(path: string): Promise<void>;
     listDir(path: string): Promise<string[]>;
   };

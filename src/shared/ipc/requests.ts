@@ -57,6 +57,9 @@ const MAX_RECOVERY_ID = 100;
 const positionSchema = z.object({ x: z.number(), y: z.number() });
 const viewportSchema = z.object({ x: z.number(), y: z.number(), zoom: z.number().positive() });
 const finite = z.number().finite();
+/** A DBC file by name and a record's values (numbers, and text for the string fields) */
+const dbcFile = z.string().min(5).max(64).regex(/^[A-Za-z0-9_]+[.]dbc$/i);
+const dbcValues = z.array(z.union([finite, z.string().max(8000)])).min(1).max(300);
 /** Debug mode: a whole coordinate or size on screen, and a string in an answer from the page */
 const debugCoord = z.number().int().min(0).max(20000);
 const debugSize = z.number().int().min(1).max(20000);
@@ -218,6 +221,16 @@ const REQUEST_SCHEMAS: Record<keyof Api, z.ZodType<unknown[]>> = {
   searchTable: z.tuple([z.string().min(1).max(64), z.string().max(200)]),
   freeIds: z.tuple([z.string().min(1).max(64), z.string().min(1).max(64), z.number().int().min(0), z.number().int().min(1).max(100)]),
   sqlQuery: z.tuple([z.string().min(1).max(20000)]),
+  dbcFiles: z.tuple([]),
+  dbcSearch: z.tuple([dbcFile, z.string().max(200), z.number().int().min(1).max(200)]),
+  dbcRecord: z.tuple([dbcFile, z.number().int().min(0)]),
+  dbcTable: z.tuple([dbcFile]),
+  dbcFreeId: z.tuple([dbcFile, z.number().int().min(0).optional()]),
+  dbcCheck: z.tuple([dbcFile, dbcValues]),
+  dbcSetRecord: z.tuple([dbcFile, dbcValues]),
+  dbcRemoveRecord: z.tuple([dbcFile, z.number().int().min(0)]),
+  spellClone: z.tuple([z.number().int().min(1), z.number().int().min(1).optional(), z.string().max(100).optional()]),
+  exportClientPatch: z.tuple([z.object({ folder: z.string().max(500).optional(), patchName: z.string().max(40).optional(), mpq: z.boolean().optional() }).optional()]),
   smartScripts: z.tuple([z.enum(['creature', 'gameobject']), z.number().int()]),
   searchSmartScripts: z.tuple([z.object({
     action: z.number().int().optional(), event: z.number().int().optional(), spell: z.number().int().optional(), creature: z.number().int().optional(),

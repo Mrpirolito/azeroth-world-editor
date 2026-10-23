@@ -16,6 +16,7 @@ import type { DebugApi } from './debug';
 import type { UpdatesApi } from './updates';
 import type { IdsApi } from './ids';
 import type { TablesApi } from './tables';
+import type { DbcApi } from './dbc';
 
 /** Everything the renderer can ask the main process to do: every area's calls */
 export interface Api
@@ -36,4 +37,5 @@ export interface Api
     DebugApi,
     UpdatesApi,
     IdsApi,
-    TablesApi {}
+    TablesApi,
+    DbcApi {}

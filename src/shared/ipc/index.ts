@@ -26,6 +26,7 @@ export type * from './lore';
 export type * from './authoring';
 export type * from './ids';
 export type * from './tables';
+export type * from './dbc';
 export type * from './result';
 export type { Api } from './api';
 export { parseRequest } from './requests';
