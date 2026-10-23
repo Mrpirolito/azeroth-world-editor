@@ -1,6 +1,7 @@
 import type { Bonding, CustomItem, ItemQuality } from '@core/entities/model';
 import { INVENTORY_TYPES, ITEM_CLASSES, ITEM_SUBCLASSES } from '@core/entities/item-vocab';
 import { EntityField, NumberField, SelectField, TextField } from '../../scripts/fields';
+import { ModelPreview } from '../../world3d/ModelPreview';
 import { NumberSelect } from './NumberSelect';
 
 export const QUALITIES: readonly (readonly [ItemQuality, string])[] = [
@@ -43,6 +44,7 @@ export function ItemBasics({
       )}
       <NumberSelect label="Worn in" value={item.inventoryType} options={INVENTORY_TYPES} onChange={(inventoryType) => set({ inventoryType })} />
       <NumberField label="Display ID" value={item.displayId} min={0} onChange={(displayId) => set({ displayId })} />
+      <ModelPreview kind="item" displayId={item.displayId} inventoryType={item.inventoryType} />
       <EntityField id={`item-${item.entry}-copy-look`} label="Copy look from an item" kind="item" value={0} onChange={(entry) => void copyFrom(entry)} />
       <NumberField label="Item level" value={item.itemLevel} min={0} onChange={(itemLevel) => set({ itemLevel })} />
       <NumberField label="Required level" value={item.requiredLevel} min={0} onChange={(requiredLevel) => set({ requiredLevel })} />

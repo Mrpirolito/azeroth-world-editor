@@ -13,6 +13,7 @@ import type { Movement } from '../../../../core/world/movement.js';
 import type { Placement } from '../../../../core/world/layer.js';
 import type { SpawnEvents } from '../../../../core/entities/model.js';
 import { BodyTexture, DisplayResolver, Look, ModelLook } from './DisplayResolver.js';
+import { attach, canHold, type Holder } from './wear.js';
 import { creatureTransform, objectTransform, Transform } from './placement.js';
 import { Frame, IDENTITY_FRAME, placementToWorld } from '../../../../core/map/transport-frame.js';
 import { framePaths, moveRouteDrawing, routeObject, setBallSelected, wanderObject } from './paths.js';
@@ -150,9 +151,6 @@ type DrawnModel = THREE.Object3D & {
   dispose?(): void;
   material?: THREE.Material | THREE.Material[];
 };
-/** A drawn model that has attachment points, so it can hold weapons and wear helmets */
-type Holder = DrawnModel & { attachmentObject(point: number): THREE.Object3D | null };
-const canHold = (object: DrawnModel | null): object is Holder => typeof object?.attachmentObject === 'function';
 
 type SpawnManagerOptions = {
   resolver: DisplayResolver;
@@ -200,9 +198,6 @@ const markerMaterials = {
  * they stay while zoomed out over a route; an NPC whose route is worked on is drawn whatever the distance.
  */
 const SPAWN_DRAW_DISTANCE = 500;
-
-/** M2 attachment points: a shield on the arm, weapons in the right (1) and left (2) hands */
-const SHIELD_POINT = 0;
 
 /** How long to wait before asking again for an area whose answer failed */
 const RETRY_MS = 30000;
@@ -1290,8 +1285,7 @@ class SpawnManager {
   /** A worn model (a helmet, a shoulder pad) at its attachment point; one that cannot be drawn is left off */
   async #wear(model: Holder, worn: { point: number; look: ModelLook }) {
     try {
-      const point = model.attachmentObject(worn.point);
-      if (point) point.add(await this.#createModel(worn.look));
+      await attach(model, worn.point, worn.look, this.#createModel);
     } catch (error) {
       this.#warnOnce(`worn:${worn.look.path}`, `3D view: ${worn.look.path} could not be drawn: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -1302,9 +1296,7 @@ class SpawnManager {
     if (!(itemId > 0)) return;
     try {
       const look = await this.#resolver.weapon(itemId);
-      // A shield goes on the arm's shield point (0), whichever hand holds it
-      const hand = look ? model.attachmentObject(look.shield ? SHIELD_POINT : point) : null;
-      if (look && hand) hand.add(await this.#createModel(look));
+      if (look) await attach(model, point, look, this.#createModel);
     } catch (error) {
       this.#warnOnce(`item:${itemId}`, `3D view: item ${itemId} could not be drawn: ${error instanceof Error ? error.message : String(error)}`);
     }

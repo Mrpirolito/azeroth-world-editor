@@ -334,13 +334,18 @@ class DisplayResolver {
       return null;
     }
 
-    const display = (await this.#table('ItemDisplayInfo'))?.getRecord(item.displayInfoId);
+    return this.itemDisplay(item.displayInfoId, item.inventoryType);
+  }
+
+  /** A weapon or shield by its item display and where it is worn: its model and texture from the weapon or shield folder */
+  async itemDisplay(displayInfoId: number, inventoryType: number): Promise<ModelLook | null> {
+    const display = (await this.#table('ItemDisplayInfo'))?.getRecord(displayInfoId);
     if (!display || !display.modelNames[0]) {
       return null;
     }
 
     // Shields have a folder of their own
-    const shield = item.inventoryType === SHIELD_INVENTORY_TYPE;
+    const shield = inventoryType === SHIELD_INVENTORY_TYPE;
     const folder = shield ? SHIELD_FOLDER : WEAPON_FOLDER;
     const textures: Record<number, string> = {};
     if (display.modelTextures[0]) {

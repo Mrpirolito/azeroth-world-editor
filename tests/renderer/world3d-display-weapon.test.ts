@@ -48,3 +48,15 @@ describe('a held weapon', () => {
     warn.mockRestore();
   });
 });
+
+describe('an item display', () => {
+  it('is the model weapon() gives for the same item', async () => {
+    const r = resolver();
+    expect(await r.itemDisplay(5000, 21)).toEqual(await r.weapon(1899));
+    expect(await r.itemDisplay(5001, 14)).toEqual(await r.weapon(143));
+  });
+
+  it('is nothing for a display the client does not know', async () => {
+    expect(await resolver().itemDisplay(999, 21)).toBeNull();
+  });
+});

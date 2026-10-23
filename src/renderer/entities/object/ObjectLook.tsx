@@ -3,6 +3,7 @@ import type { CustomObject } from '@core/entities/model';
 import { EntityPicker } from '../../controls/EntityPicker';
 import { NumberField } from '../../scripts/fields';
 import { useApi } from '../../state/names';
+import { ModelPreview } from '../../world3d/ModelPreview';
 import { LookLine } from '../LookLine';
 
 /** How the object looks: taken from an existing object by name, browsed, or typed as an id. */
@@ -22,6 +23,7 @@ export function ObjectLook({ object, onChange, hasServerData = true }: { object:
 
   return (
     <div className="scripts-body">
+      <ModelPreview kind="object" displayId={object.displayId} />
       <LookLine kind="objectDisplay" displayId={object.displayId} hasServerData={hasServerData} />
       <EntityPicker id={`obj-${object.entry}-look-like`} label="Look like…" kind="gameobject" value={from} onChange={(entry) => void lookLike(entry)} />
       <button type="button" className="entry-card__btn" aria-expanded={otherWays} onClick={() => setOtherWays((v) => !v)}>

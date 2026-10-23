@@ -3,6 +3,7 @@ import type { CustomNpc } from '@core/entities/model';
 import { EntityPicker } from '../../controls/EntityPicker';
 import { CheckField, NumberField } from '../../scripts/fields';
 import { useApi } from '../../state/names';
+import { ModelPreview } from '../../world3d/ModelPreview';
 import { LookLine } from '../LookLine';
 
 const NO_WEAPONS = { mainHand: 0, offHand: 0, ranged: 0 };
@@ -61,6 +62,7 @@ export function NpcLook({ npc, onChange, others = [], hasServerData = true }: {
 
   return (
     <div className="scripts-body">
+      <ModelPreview kind="creature" displayId={npc.displayId} scale={npc.scale} equipment={[npc.equipment.mainHand, npc.equipment.offHand]} />
       <LookLine kind="creatureDisplay" displayId={npc.displayId} hasServerData={hasServerData} />
       <EntityPicker id={`npc-${npc.entry}-look-like`} label="Look like…" kind="creature" value={from} onChange={(entry) => void lookLike(entry)} />
       {lookError && <p className="scene-warning">{lookError}</p>}
