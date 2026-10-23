@@ -8,6 +8,9 @@ import { spellDetail, spellLabel } from '../../core/game/spells';
 import type { Services } from './services';
 import { fail, run } from './errors';
 import { ENTITY_SEARCH_LIMIT } from './server-files';
+import { npcSpawnGuids } from '../../core/entities/spawn-events-read';
+import { objectSpawnGuids, readSmartScripts, readTexts } from '../../core/smartai/read';
+import { hasFilter, searchSmartScripts } from '../../core/smartai/search';
 
 const SEARCH_LIMIT = 50;
 
@@ -202,6 +205,19 @@ export function createLookupApi(s: Services): LookupApi {
           if (spell) found[id] = spell;
         }
         return { available: true, spells: found };
+      }),
+
+    smartScripts: (kind, entry) =>
+      run(async () => {
+        const db = connected().db;
+        const guids = kind === 'creature' ? await npcSpawnGuids(db, entry) : await objectSpawnGuids(db, entry);
+        return { rows: await readSmartScripts(db, kind, entry, guids), texts: kind === 'creature' ? await readTexts(db, entry) : [] };
+      }),
+
+    searchSmartScripts: (query) =>
+      run(async () => {
+        if (!hasFilter(query)) throw fail('BAD_REQUEST', 'Say what to look for: an action, an event, a spell, a creature, a quest, an item, an object or a text group.');
+        return searchSmartScripts(connected().db, query);
       }),
 
     gameEvents: () =>

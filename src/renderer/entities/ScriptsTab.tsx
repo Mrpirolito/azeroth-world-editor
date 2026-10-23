@@ -1,5 +1,9 @@
 import type { CustomNpc } from '@core/entities/model';
 import { NPC_SCENE_LIMIT, blankNpcScene, nextNpcSceneId, scenesLocked, type NpcScene } from '@core/scripts/npc-scenes';
+import { fightIsEmpty } from '@core/combat/model';
+import { SMART_ROWS_KEY, smartUnread } from '@core/smartai/lock';
+import type { SmartRow } from '@core/smartai/row';
+import { SmartScriptsPanel } from '../smartai/SmartScriptsPanel';
 import { NpcSceneCard } from './NpcSceneCard';
 
 /** The Scripts tab's body: the scenes the NPC owns, whatever the quest */
@@ -18,6 +22,24 @@ export function ScriptsTab({
   const databaseScripts = npc.origin.kind === 'existing' ? (npc.origin.databaseScripts ?? 0) : 0;
   const setScenes = (next: NpcScene[]): void => onChange({ ...npc, scenes: next });
   const full = scenes.length >= NPC_SCENE_LIMIT;
+  const name = npc.name.trim() || `NPC ${npc.entry}`;
+  // The SmartAI rows the database had when it was brought in; a new NPC has none
+  const original = npc.origin.kind === 'existing' ? (npc.origin.original[SMART_ROWS_KEY] as SmartRow[] | undefined) : undefined;
+  const blockedReason = locked
+    ? 'Its AI is not SmartAI, so SmartAI rows would never run on it.'
+    : smartUnread(npc.origin)
+      ? 'This NPC was brought into the project before its SmartAI rows were read. Choose Put back as the database has it, then edit it again.'
+      : scenes.length > 0
+        ? 'This NPC has scenes, which write SmartAI rows of their own. Remove them first to edit the rows directly.'
+        : npc.fight && !fightIsEmpty(npc.fight)
+          ? 'This NPC has a fight, which writes SmartAI rows of its own. Clear it first to edit the rows directly.'
+          : undefined;
+  const rowsPanel = (
+    <SmartScriptsPanel owner={{ kind: 'creature', entry: npc.entry, name }} rows={npc.smartScripts} original={original} unread={smartUnread(npc.origin)}
+      blockedReason={npc.smartScripts === null ? blockedReason : undefined} onChange={(smartScripts) => onChange({ ...npc, smartScripts })} />
+  );
+  // Rows edited directly hold every row of the NPC, so scenes have nothing to add to them
+  if (npc.smartScripts !== null) return rowsPanel;
 
   return (
     <>
@@ -50,6 +72,7 @@ export function ScriptsTab({
         Add scene
       </button>
       {full && <p className="scene-hint">An NPC can have {NPC_SCENE_LIMIT} scenes.</p>}
+      {rowsPanel}
     </>
   );
 }

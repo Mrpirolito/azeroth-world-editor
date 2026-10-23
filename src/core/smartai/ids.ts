@@ -1,4 +1,6 @@
 import type { ScriptRow } from '../links/model';
+import { typeOf } from './catalogue';
+import { say } from './format';
 
 /**
  * SmartAI's numeric vocabulary, lifted from AzerothCore's fork headers so a component reader never
@@ -243,7 +245,7 @@ const STEP_NAMES: Record<number, string> = {
 
 /** A script action as one step of a sentence, for scripts the tool did not write. */
 export function stepName(actionType: number): string {
-  return STEP_NAMES[actionType] ?? `SmartAI action ${actionType}`;
+  return STEP_NAMES[actionType] ?? typeOf('action', actionType)?.name.toLowerCase() ?? `SmartAI action ${actionType}`;
 }
 
 /** Events that only fire around a fight; the combat wizard, not quest scripting, will own them. */
@@ -343,6 +345,6 @@ export function describeEvent(row: ScriptRow): string {
     case 109:
       return 'when it finishes its path';
     default:
-      return `on SmartAI event ${row.eventType}`;
+      return typeOf('event', row.eventType) ? say('event', row.eventType, row.eventParams) : `on SmartAI event ${row.eventType}`;
   }
 }

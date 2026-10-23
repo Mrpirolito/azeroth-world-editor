@@ -86,7 +86,8 @@ export function createPatches(ctx: ApiContext) {
    * project NPC goes in, so the rows of a fight or point action since removed are deleted.
    */
   async function projectScripts(live: Session): Promise<{ context: ScriptContext; compiled: CompiledScripts }> {
-    const { npcs } = projectEntities();
+    // An NPC whose SmartAI rows are edited directly owns all of them: its fight, patrol and scenes write nothing
+    const npcs = projectEntities().npcs.filter((n) => n.smartScripts === null);
     const context = await readScriptContext(live.db, 0, [], npcs.map((n) => n.entry));
     const none: CompiledScripts = { inserts: {}, deletes: {}, updates: [], flags: [], warnings: [] };
     const fights = compileFights({ npcs, objectives: objectivesByQuest(), context, taken: none });

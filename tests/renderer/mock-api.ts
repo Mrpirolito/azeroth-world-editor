@@ -154,6 +154,8 @@ export function makeMockApi(overrides: Partial<Record<keyof Api, (...args: any[]
     worldDeleteGroup: vi.fn(async () => okv({ spawns: [], routes: [], added: [] })),
     questPools: vi.fn(async () => okv([])),
     gameEvents: vi.fn(async () => okv([])),
+    smartScripts: vi.fn(async () => okv({ rows: [], texts: [] })),
+    searchSmartScripts: vi.fn(async () => okv({ hits: [], capped: false })),
     worldDropMember: vi.fn(async () => okv({ spawns: [], routes: [], added: [] })),
     historyList: vi.fn(async () => okv(emptyHistoryResult.history)),
     historyUndo: vi.fn(async () => okv(emptyHistoryResult)),

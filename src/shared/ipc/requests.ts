@@ -214,6 +214,11 @@ const REQUEST_SCHEMAS: Record<keyof Api, z.ZodType<unknown[]>> = {
   worldDropMember: z.tuple([z.enum(['npc', 'object']), z.number().int().min(1)]),
   questPools: z.tuple([]),
   gameEvents: z.tuple([]),
+  smartScripts: z.tuple([z.enum(['creature', 'gameobject']), z.number().int()]),
+  searchSmartScripts: z.tuple([z.object({
+    action: z.number().int().optional(), event: z.number().int().optional(), spell: z.number().int().optional(), creature: z.number().int().optional(),
+    gameobject: z.number().int().optional(), quest: z.number().int().optional(), item: z.number().int().optional(), textGroup: z.number().int().optional(), entry: z.number().int().optional(),
+  })]),
   historyList: z.tuple([]),
   historyUndo: z.tuple([]),
   historyRedo: z.tuple([]),

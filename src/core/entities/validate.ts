@@ -5,6 +5,9 @@ import { GOSSIP_SERVICES, serviceFlagBits } from '../game/gossip-services';
 import { ENTITIES_FIELD, gossipUnread, sameGossip, sameGossipMenu, sameTrainer, trainerUnread, vendorUnread, type CustomItem, type CustomNpc, type CustomObject, type QuestEntities } from './model';
 import { missingChoice } from '../patrol/compile';
 import { npcSceneIssues } from '../scripts/npc-validate';
+import { SMART_ROWS_KEY, smartUnread } from '../smartai/lock';
+import { numberOf, sameRowSets, type SmartRow } from '../smartai/row';
+import { validateRows } from '../smartai/validate';
 
 /**
  * Inventory types the server lets an NPC hold (`ObjectMgr::LoadEquipmentTemplates`): weapon, shield,
@@ -111,6 +114,18 @@ export function entityIssues(input: {
     if (!existing && entity.spawns.length === 0) add('warning', 'ENTITY_NO_SPAWN', 'nothing places it in the world yet; add a spawn.');
     else if (!existing && entity.spawns.some((s) => s.x === 0 && s.y === 0 && s.z === 0)) {
       add('warning', 'ENTITY_SPAWN_ORIGIN', 'a spawn is still at 0, 0, 0; set where it stands.');
+    }
+    // SmartAI rows the author wrote: what the server would refuse, and rows that are not this entity's to write
+    if (entity.smartScripts && !smartUnread(entity.origin)) {
+      const read = entity.origin.kind === 'existing' ? ((entity.origin.original[SMART_ROWS_KEY] ?? []) as SmartRow[]) : [];
+      // Rows left as the database has them are not checked: whatever they say, they already run
+      if (!sameRowSets(entity.smartScripts, read)) {
+        const source = kind === 'creature' ? 0 : 1;
+        const foreign = entity.smartScripts.filter((r) => numberOf(r, 'source_type') !== 9 && !(numberOf(r, 'source_type') === source && (numberOf(r, 'entryorguid') === entity.entry || numberOf(r, 'entryorguid') < 0)));
+        if (foreign.length > 0) add('error', 'SMARTAI_FOREIGN', `${foreign.length} SmartAI ${foreign.length === 1 ? 'row is' : 'rows are'} for something else (${[...new Set(foreign.map((r) => `${r.entryorguid}/${r.source_type}`))].slice(0, 3).join(', ')}), which this ${word.toLowerCase()} cannot write.`);
+        const exists = (k: string, id: number): boolean | undefined => (k === 'item' ? input.knownItem?.(id) : k === 'quest' ? input.knownQuest?.(id) : undefined);
+        for (const problem of validateRows(entity.smartScripts, { exists })) add(problem.level, 'SMARTAI_ROW', `SmartAI row ${problem.row ?? ''}: ${problem.message}`.replace('row : ', ''));
+      }
     }
     if ('equipment' in entity && input.itemInventoryTypes) {
       for (const [slot, word] of [['mainHand', 'main hand'], ['offHand', 'off hand'], ['ranged', 'ranged']] as const) {

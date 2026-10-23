@@ -5,6 +5,9 @@ import type { PatchStatement } from '../export/build-patch';
 import { ITEM_SLOT_BLOCKS, itemRow } from './item-columns';
 import { itemFromRows, MAX_GOSSIP_MENUS, npcFromRows } from './from-rows';
 import { seenByColumns, seenByOf } from './visibility';
+import { SMART_AI_NAME, SMART_ROWS_KEY, smartLocked, smartUnread } from '../smartai/lock';
+import { readSmartScripts, objectSpawnGuids } from '../smartai/read';
+import { numberOf as smartNumber, type SmartRow } from '../smartai/row';
 import { npcSpawnGuids, spawnEventRows } from './spawn-events-read';
 import { rowsOrNone } from '../db/rows-or-none';
 import {
@@ -71,6 +74,22 @@ function writeTable(out: Statements, origin: Existing, table: string, keys: Reco
   }
   for (const row of rows) out.apply.push({ kind: 'insert', table, row: row as RawRow });
   for (const row of original) out.revert.push({ kind: 'insert', table, row: row as RawRow });
+}
+
+/**
+ * The entity's SmartAI rows: every row it has is replaced by the ones held. Each script (an owner and its
+ * source type) is deleted by key and written whole, the revert deleting the same keys and putting the originals back;
+ * rows left as read write nothing. An entity brought in before its rows were read is not written.
+ */
+function writeSmartScripts(out: Statements, origin: Existing, rows: readonly Row[] | null): void {
+  if (rows === null || smartUnread(origin)) return;
+  const had = rowsOf(origin, SMART_ROWS_KEY);
+  const scripts = new Map<string, Record<string, string>>();
+  for (const row of [...had, ...rows]) {
+    const key = { entryorguid: text(smartNumber(row, 'entryorguid')), source_type: text(smartNumber(row, 'source_type')) };
+    scripts.set(`${key.entryorguid}/${key.source_type}`, key);
+  }
+  writeTable(out, { ...origin, original: { ...origin.original, smart_scripts: had } }, 'smart_scripts', [...scripts.values()], rows as Row[]);
 }
 
 /** The loot rows of a list; a row for an item the list already had keeps the columns the editor does not model (`Comment`) */
@@ -282,6 +301,8 @@ function npcStatements(out: Statements, npc: CustomNpc, origin: Existing, givers
   const original: Row = rowsOf(origin, 'creature_template')[0] ?? { entry };
   const lootLocked = origin.locked.includes('loot');
   const fightLocked = origin.locked.includes('fight');
+  // Its SmartAI rows run on SmartAI: the AI name is set when it has any, unless it runs something else
+  const smartOn = (npc.smartScripts?.length ?? 0) > 0 && !origin.locked.includes('scenes') && !smartUnread(origin);
   const originalLoot = num(original.lootid);
   const lootId = originalLoot > 0 ? originalLoot : !lootLocked && npc.loot.length > 0 ? (lootIds.get(`npc:${npc.entry}`) ?? npc.entry) : 0;
   const asRead = npcFromRows(npc.entry, origin.original, { sharedLoot: origin.sharedLoot, spawnCount: origin.spawnCount, sharedMenus: origin.sharedMenus, sharedTexts: origin.sharedTexts });
@@ -309,7 +330,7 @@ function npcStatements(out: Statements, npc: CustomNpc, origin: Existing, givers
       HealthModifier: text(n.healthModifier), DamageModifier: text(n.damageModifier), npcflag: text(flags),
       ...(rootChanged ? { gossip_menu_id: text(rootNow) } : {}),
       // Scenes run on SmartAI too; the snapshot of an NPC adopted with no AI says '', so it is set again at every export
-      AIName: !fightLocked && (!fightIsEmpty(n.fight) || (n.scenes.length > 0 && !origin.locked.includes('scenes'))) ? 'SmartAI' : (original.AIName ?? ''),
+      AIName: smartOn || (!fightLocked && (!fightIsEmpty(n.fight) || (n.scenes.length > 0 && !origin.locked.includes('scenes')))) ? SMART_AI_NAME.npc : (original.AIName ?? ''),
       lootid: text(lootId),
       // Written only when changed: absent on an NPC saved before it could be set, its flags stay as they are
       ...(n.seenBy && n.seenBy !== seenByOf(original) ? seenByColumns(n.seenBy, original) : {}),
@@ -335,12 +356,14 @@ function npcStatements(out: Statements, npc: CustomNpc, origin: Existing, givers
   if (vendorChanged) writeTable(out, origin, 'npc_vendor', [{ entry }], vendorRows(entry, npc.vendor, rowsOf(origin, 'npc_vendor')));
   if (trainerChanged) writeTrainer(out, origin, entry, npc.trainer, asRead.trainer);
   if (gossipChanged) writeGossip(out, origin, npc.gossipMenu, asRead.gossipMenu);
+  if (!origin.locked.includes('scenes')) writeSmartScripts(out, origin, npc.smartScripts);
 }
 
 function objectStatements(out: Statements, object: CustomObject, origin: Existing, lootIds: LootIds): void {
   const entry = text(object.entry);
   const original: Row = rowsOf(origin, 'gameobject_template')[0] ?? { entry };
-  const row: Row = { ...original, entry, name: object.name, displayId: text(object.displayId), size: text(object.size) };
+  const smartRows = smartLocked('object', original) ? null : object.smartScripts;
+  const row: Row = { ...original, entry, name: object.name, displayId: text(object.displayId), size: text(object.size), ...((smartRows?.length ?? 0) > 0 && !smartUnread(origin) ? { AIName: SMART_AI_NAME.object } : {}) };
   let lootId = 0;
   if (!origin.locked.includes('type')) {
     const type = OBJECT_TYPE_VALUE[object.type];
@@ -361,6 +384,7 @@ function objectStatements(out: Statements, object: CustomObject, origin: Existin
   writeTable(out, origin, 'gameobject_template', [{ entry }], [row]);
   if (!origin.locked.includes('loot') && lootId > 0) writeTable(out, origin, 'gameobject_loot_template', [{ Entry: text(lootId) }], lootRows(lootId, object.loot, rowsOf(origin, 'gameobject_loot_template')));
   writePages(out, origin, object.pages);
+  writeSmartScripts(out, origin, smartRows);
 }
 
 function itemStatements(out: Statements, item: CustomItem, origin: Existing): void {
@@ -482,6 +506,7 @@ export async function readOriginalRows(db: RowReader, kind: Kind, entry: number)
       ...gossip,
       ...(hasDefault ? { creature_default_trainer: links } : {}), ...(hasTrainer ? { trainer: trainerRows } : {}), ...(hasSpells ? { trainer_spell: spellRows } : {}), ...(hasLegacy ? { npc_trainer: legacyRows } : {}),
       creature: guids.map((g) => ({ guid: text(g) })), game_event_creature: events,
+      ...(hasScripts ? { [SMART_ROWS_KEY]: await readSmartScripts(db, 'creature', entry, guids) } : {}),
     };
   }
   if (kind === 'object') {
@@ -495,7 +520,11 @@ export async function readOriginalRows(db: RowReader, kind: Kind, entry: number)
       lootid > 0 ? rowsOrNone(db, 'gameobject_loot_template', { Entry: text(lootid) }) : Promise.resolve([]),
       pageRows(db, first),
     ]);
-    return { gameobject_template: template, gameobject_loot_template: loot, page_text: pages };
+    const hasScripts = !db.columns || (await db.columns('smart_scripts')).length > 0;
+    return {
+      gameobject_template: template, gameobject_loot_template: loot, page_text: pages,
+      ...(hasScripts ? { [SMART_ROWS_KEY]: await readSmartScripts(db, 'gameobject', entry, await objectSpawnGuids(db, entry)) } : {}),
+    };
   }
   const template = await rowsOrNone(db, 'item_template', { entry: key });
   if (template.length === 0) return null;

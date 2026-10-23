@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { overlayFound, overlayView } from '../../../core/world/overlay-spawns';
+import { sentenceOf } from '../../../core/smartai/describe';
 import { defineTool } from '../tool';
 
 const id = z.number().int();
@@ -46,6 +47,23 @@ export const lookupTools = [
     input: { ids: z.array(id).max(500) },
     write: false,
     run: ({ ids }, ctx) => ctx.call('spellFacts', ids),
+  }),
+  defineTool({
+    name: 'smart_scripts',
+    title: 'SmartAI scripts of an NPC or object',
+    description: 'Every SmartAI (smart_scripts) row a creature or game object runs in the database: its own script, the scripts of its spawns (negative guid) and the timed action lists it calls, each as the raw row and as a sentence, plus the creature_text lines of the creature.',
+    input: { kind: z.enum(['creature', 'gameobject']), entry: id },
+    write: false,
+    run: ({ kind, entry }, ctx) => ctx.call('smartScripts', kind, entry),
+    present: (value: { rows: Record<string, string | null>[] }) => ({ ...value, sentences: value.rows.map((row) => `${row.entryorguid}/${row.source_type}/${row.id}: ${sentenceOf(row)}`) }),
+  }),
+  defineTool({
+    name: 'search_smart_scripts',
+    title: 'Who uses this in SmartAI',
+    description: 'The SmartAI rows that run an action type (action), fire on an event type (event), or name a spell, creature, game object, quest, item or creature_text group (any parameter of any event, action or target). Filters are ANDed; entry limits it to one creature or object. At most 300 rows.',
+    input: { action: id.optional(), event: id.optional(), spell: id.optional(), creature: id.optional(), gameobject: id.optional(), quest: id.optional(), item: id.optional(), textGroup: id.optional(), entry: id.optional() },
+    write: false,
+    run: (query, ctx) => ctx.call('searchSmartScripts', query),
   }),
   defineTool({
     name: 'reward_tables',

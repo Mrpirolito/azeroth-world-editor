@@ -201,6 +201,11 @@ export const gossipMenuSchema = z.object({
 /** An NPC's menus: the first is the one it opens with (`creature_template.gossip_menu_id`) */
 export const gossipTreeSchema = z.object({ menus: z.array(gossipMenuSchema).min(1) });
 
+/** One `smart_scripts` row as the database has it (column to text), kept whole so columns the editor does not know survive */
+export const smartRowSchema = z.record(z.string(), z.string().nullable());
+/** Every SmartAI row of a creature or object: its script, its spawns' and its action lists. Null leaves what the database has alone. */
+const smartScriptsSchema = z.array(smartRowSchema).nullable().default(null);
+
 export const lootSchema = z.object({ item: int, chance: num, min: int, max: int, questOnly: z.boolean() });
 
 const npcFields = z.object({
@@ -239,6 +244,8 @@ const npcFields = z.object({
   gossipMenu: gossipTreeSchema.nullable().default(null),
   // Added with NPC scripts: scenes this NPC owns, whatever the quest. The default keeps NPCs saved before then as they were.
   scenes: z.array(npcSceneSchema).default([]),
+  // Added with the SmartAI editor: all its smart_scripts rows, written over what the database has; null leaves them alone.
+  smartScripts: smartScriptsSchema,
 });
 
 /**
@@ -266,6 +273,8 @@ const objectSchema = z.object({
   onlyDuringQuest: int.nullable().default(null),
   loot: z.array(lootSchema).default([]),
   origin: originSchema.default(NEW_ORIGIN),
+  // Added with the SmartAI editor; null leaves the database's rows alone.
+  smartScripts: smartScriptsSchema,
 });
 
 export const ITEM_QUALITY_VALUE = { poor: 0, common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5, artifact: 6, heirloom: 7 } as const;
@@ -489,11 +498,12 @@ export function newNpc(entry: number): CustomNpc {
     trainer: null,
     gossipMenu: null,
     scenes: [],
+    smartScripts: null,
   };
 }
 
 export function newObject(entry: number): CustomObject {
-  return { entry, name: '', type: 'goober', displayId: 0, size: 1, spawns: [], pages: [], onlyDuringQuest: null, loot: [], origin: { kind: 'new' } };
+  return { entry, name: '', type: 'goober', displayId: 0, size: 1, spawns: [], pages: [], onlyDuringQuest: null, loot: [], origin: { kind: 'new' }, smartScripts: null };
 }
 
 export function newSpawn(guid: number): Spawn {

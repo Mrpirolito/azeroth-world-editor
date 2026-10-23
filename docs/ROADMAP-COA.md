@@ -43,6 +43,14 @@ arbitrary smart_scripts. Add:
 - Search: "who uses action X / spell Y / text Z".
 Done when: any existing SAI script round-trips byte-identical and new ones pass validation.
 
+Status (branch `feat/smartai-editor`): implemented. `src/core/smartai/` holds the catalogue of every
+event, action and target the CoA server supports (`SmartScriptMgr.h`), the row model, sentences,
+validation, the DB read and the "who uses this" search. NPCs and objects carry `smartScripts` (all
+their rows, written over the database's and reverted from the rows read at import); the NPC and object
+Scripts tab opens them as cards. MCP tools: `smart_scripts`, `search_smart_scripts`. Rows written by
+quest scenes, fights and patrols of the same NPC are not merged: an NPC whose rows are edited directly
+owns all of them.
+
 ## Phase 3 - Keira3 coverage
 
 Port editor by editor (ordered by CoA value):

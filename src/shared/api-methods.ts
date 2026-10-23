@@ -68,6 +68,8 @@ export const API_METHODS = [
   'worldDropMember',
   'questPools',
   'gameEvents',
+  'smartScripts',
+  'searchSmartScripts',
   'historyList',
   'historyUndo',
   'historyRedo',

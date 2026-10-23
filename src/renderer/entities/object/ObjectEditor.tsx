@@ -5,6 +5,7 @@ import { SpawnList } from '../SpawnList';
 import { ExistingLoot, type ExistingFacts } from '../existing-facts';
 import { ObjectBasics } from './ObjectBasics';
 import { ObjectLook } from './ObjectLook';
+import { ObjectScripts } from './ObjectScripts';
 import { PageList } from './PageList';
 import '../../scripts/scripts.css';
 
@@ -59,6 +60,7 @@ export function ObjectEditor({
       ),
     });
   }
+  tabs.push({ id: 'scripts', label: 'Scripts', render: () => <ObjectScripts object={object} onChange={onChange} /> });
   if (!existing) {
     tabs.push({
       id: 'placement',

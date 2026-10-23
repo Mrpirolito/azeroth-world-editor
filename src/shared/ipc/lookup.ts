@@ -1,6 +1,9 @@
 import type { RefKind } from '@core/db/types';
 import type { EntityHit, QuestSummary, SearchKind } from '@core/db/world-db';
 import type { SpellFacts } from '@core/game/spells';
+import type { TextLine } from '@core/smartai/read';
+import type { ScriptHit, ScriptSearch } from '@core/smartai/search';
+import type { SmartRow } from '@core/smartai/row';
 import type { Result } from './result';
 
 /** A quest an NPC starts or ends. */
@@ -32,4 +35,8 @@ export interface LookupApi {
   spellFacts(ids: number[]): Promise<Result<SpellFactsResult>>;
   /** The game events in the database, by id, with their descriptions as names. */
   gameEvents(): Promise<Result<{ id: number; name: string }[]>>;
+  /** Every SmartAI row a creature or object runs (its script, its spawns' and its action lists) as the database has them now, with its creature text */
+  smartScripts(kind: 'creature' | 'gameobject', entry: number): Promise<Result<{ rows: SmartRow[]; texts: TextLine[] }>>;
+  /** The script rows that run an action, or name a spell, creature, quest, item, object or text group */
+  searchSmartScripts(query: ScriptSearch): Promise<Result<{ hits: ScriptHit[]; capped: boolean }>>;
 }

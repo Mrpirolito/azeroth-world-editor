@@ -1,0 +1,115 @@
+import {
+  area, bool, choice, cooldown, creature, emote, flags, gameEvent, gossipMenu, hi, int, lo, map, ms, pct, phaseMask, quest, repeat, spell, textGroup, timers, yards, areatrigger,
+} from './dsl';
+import { CHARM_MOMENTS, GOSSIP_HELLO_FILTERS, GO_STATES, HOSTILITY, RESPAWN_CHECKS, SPELL_SCHOOL_BITS, TEAMS, UNIT_KINDS } from './flags';
+import type { ParamDef, TypeDef } from './types';
+import { SOURCE_MASK } from './types';
+
+/** `SMART_EVENT_*` available on a 3.3.5a AzerothCore server: what makes a script row fire. */
+
+/** The script kinds each event works in, as the server's own table has them */
+const SOURCES: Record<number, number> = {
+  0: 513, 1: 259, 8: 3, 11: 3, 17: 3, 19: 3, 20: 3, 35: 3, 37: 3, 38: 3, 41: 128, 42: 128, 43: 128, 44: 128, 45: 256, 46: 4, 47: 32, 48: 32, 49: 32, 50: 32, 51: 32,
+  52: 3, 59: 3, 60: 3, 61: 511, 62: 3, 63: 3, 64: 3, 66: 3, 68: 3, 69: 3, 70: 2, 71: 2, 77: 3, 82: 3, 101: 3, 102: 3, 103: 3, 104: 3, 107: 3,
+};
+
+const ev = (id: number, key: string, name: string, say: string, help: string, params: readonly ParamDef[] = []): TypeDef => ({
+  id, key, name, say, help, params, sources: SOURCES[id] ?? SOURCE_MASK.creature,
+});
+
+const hpRange = (what: string): ParamDef[] => [lo(pct(`${what} at least`)), hi(pct(`${what} at most`)), ...repeat()];
+const waypoint = (): ParamDef[] => [int('Point id', 'any'), int('Path id', 'any')];
+const los = (): ParamDef[] => [choice('Which units', HOSTILITY), yards('Within (yards)'), ...cooldown(), bool('Players only')];
+const auraCheck = (): ParamDef[] => [spell('Aura'), int('Stacks', 'any'), ...repeat()];
+
+export const EVENTS: readonly TypeDef[] = [
+  ev(0, 'UPDATE_IC', 'Timer, in combat', 'on a timer while in combat', 'Fires on a timer, only while it is fighting. Both times are random between the two values.', timers()),
+  ev(1, 'UPDATE_OOC', 'Timer, out of combat', 'on a timer while out of combat', 'Fires on a timer, only while it is not fighting.', timers()),
+  ev(2, 'HEALTH_PCT', 'Health reaches a level', 'when its health is between {1}% and {2}%', 'While fighting, fires when its health is inside the range. Use the repeat times to let it fire more than once.', hpRange('Health %')),
+  ev(3, 'MANA_PCT', 'Mana reaches a level', 'when its mana is between {1}% and {2}%', 'While fighting, fires when its mana is inside the range.', hpRange('Mana %')),
+  ev(4, 'AGGRO', 'Enters combat', 'when it enters combat', 'Fires once when it starts fighting.'),
+  ev(5, 'KILL', 'Kills a unit', 'when it kills {4}', 'Fires when it kills something. Pick the creature it must kill, or tick players only.', [...cooldown(), bool('Players only', undefined, 'When off, name the creature below (0 for any).'), creature('Creature killed', 'any')]),
+  ev(6, 'DEATH', 'Dies', 'when it dies', 'Fires when it dies.'),
+  ev(7, 'EVADE', 'Leaves combat (evades)', 'when it evades', 'Fires when it gives up a fight and resets.'),
+  ev(8, 'SPELLHIT', 'Is hit by a spell', 'when {1} hits it', 'Fires when a spell hits it. 0 for the spell means any spell.', [spell('Spell', 'any'), flags('School', SPELL_SCHOOL_BITS), ...cooldown()]),
+  ev(9, 'RANGE', 'Target is in range', 'when its target is {5} to {6} yards away', 'While fighting, fires when its current target is inside a range.', [...timers(), lo(yards('Range: at least')), hi(yards('Range: at most'))]),
+  ev(10, 'OOC_LOS', 'Unit comes into sight (out of combat)', 'when a unit comes into view while out of combat', 'Fires when something moves in line of sight within a distance, while it is not fighting. The usual way to trigger on a player walking up.', los()),
+  ev(11, 'RESPAWN', 'Respawns', 'when it respawns', 'Fires when it respawns, optionally only on one map or in one area.', [choice('Only', RESPAWN_CHECKS), map('Map'), area('Area')]),
+  ev(12, 'TARGET_HEALTH_PCT', "Target's health reaches a level", "when its target's health is between {1}% and {2}%", "While fighting, fires when its target's health is inside the range.", hpRange('Target health %')),
+  ev(13, 'VICTIM_CASTING', 'Target is casting', 'when its target is casting {3}', 'Fires when the unit it is fighting is casting. 0 for the spell means any cast.', [...repeat(), spell('Spell', 'any')]),
+  ev(14, 'FRIENDLY_HEALTH', 'A friend lost health', 'when a friend within {2} yards has lost {1} health', 'Fires when it or a friendly unit nearby is missing a flat amount of health (not a percentage).', [int('Health missing'), yards('Within (yards)'), ...repeat()]),
+  ev(15, 'FRIENDLY_IS_CC', 'A friend is crowd controlled', 'when a friend within {1} yards is crowd controlled', 'Fires when a friendly unit nearby is under a crowd control effect.', [yards('Within (yards)'), ...repeat()]),
+  ev(16, 'FRIENDLY_MISSING_BUFF', 'A friend lacks an aura', 'when a friend within {2} yards lacks {1}', 'Fires when a friendly unit nearby is missing an aura.', [spell('Aura'), yards('Within (yards)'), ...repeat(), bool('Only in combat')]),
+  ev(17, 'SUMMONED_UNIT', 'It summoned a unit', 'when it summons {1}', 'Fires when it summons a creature. 0 means any creature.', [creature('Creature', 'any'), ...cooldown()]),
+  ev(18, 'TARGET_MANA_PCT', "Target's mana reaches a level", "when its target's mana is between {1}% and {2}%", "Fires when its target's mana is inside the range.", hpRange('Target mana %')),
+  ev(19, 'ACCEPTED_QUEST', 'A quest is accepted from it', 'when {1} is accepted from it', 'Fires when a player accepts a quest from it. 0 means any quest.', [quest('Quest', 'any'), ...cooldown()]),
+  ev(20, 'REWARD_QUEST', 'A quest is turned in to it', 'when {1} is turned in to it', 'Fires when a player turns a quest in to it. 0 means any quest.', [quest('Quest', 'any'), ...cooldown()]),
+  ev(21, 'REACHED_HOME', 'Reaches home', 'when it gets back home', 'Fires when it returns to its home position.'),
+  ev(22, 'RECEIVE_EMOTE', 'A player uses an emote on it', 'when a player uses {1} on it', 'Fires when a player does an emote at it.', [emote('Emote'), ...cooldown()]),
+  ev(23, 'HAS_AURA', 'It has an aura', 'while it has {1}', 'Fires while it has the aura (with at least that many stacks).', auraCheck()),
+  ev(24, 'TARGET_BUFFED', 'Its target has an aura', 'while its target has {1}', 'Fires while the unit it is fighting has the aura.', auraCheck()),
+  ev(25, 'RESET', 'Resets', 'when it resets', 'Fires when it resets: after combat, on respawn and when it first spawns.'),
+  ev(26, 'IC_LOS', 'Unit comes into sight (in combat)', 'when a unit comes into view while fighting', 'Like coming into sight out of combat, but while it is fighting.', los()),
+  ev(27, 'PASSENGER_BOARDED', 'A passenger boards', 'when a passenger boards it', 'Fires when something boards this vehicle.', cooldown()),
+  ev(28, 'PASSENGER_REMOVED', 'A passenger leaves', 'when a passenger leaves it', 'Fires when something leaves this vehicle.', cooldown()),
+  ev(29, 'CHARMED', 'Is charmed', 'when it is charmed', 'Fires when it is charmed, or when the charm ends.', [choice('When', CHARM_MOMENTS)]),
+  ev(30, 'CHARMED_TARGET', 'Its target is charmed', 'when its target is charmed', 'Fires when the unit it is fighting is charmed.'),
+  ev(31, 'SPELLHIT_TARGET', "A spell hits its target", "when {1} hits its target", 'Fires when a spell lands on the unit it is fighting.', [spell('Spell', 'any'), flags('School', SPELL_SCHOOL_BITS), ...cooldown()]),
+  ev(32, 'DAMAGED', 'Takes damage', 'when it takes damage', 'Fires when it takes an amount of damage between the two values. Set the health percent to fire once when its health drops that low.', [lo(int('Damage: at least')), hi(int('Damage: at most')), ...repeat(), pct('Health % check')]),
+  ev(33, 'DAMAGED_TARGET', 'Its target takes damage', 'when its target takes damage', 'Fires when the unit it is fighting takes damage in the range.', [lo(int('Damage: at least')), hi(int('Damage: at most')), ...repeat()]),
+  ev(34, 'MOVEMENTINFORM', 'Finishes a movement', 'when it arrives at point {2}', 'Fires when a scripted movement ends (the point id is the one given in the move action).', [int('Movement type', 'any'), int('Point id'), int('Path id', 'any')]),
+  ev(35, 'SUMMON_DESPAWNED', 'A summon despawns', 'when its summon {1} despawns', 'Fires when a creature it summoned goes away.', [creature('Creature', 'any'), ...cooldown()]),
+  ev(36, 'CORPSE_REMOVED', 'Its corpse is removed', 'when its corpse is removed', 'Fires when its corpse disappears.'),
+  ev(37, 'AI_INIT', 'AI starts', 'when its AI starts', 'Fires when the AI is created, before it is placed in the world.'),
+  ev(38, 'DATA_SET', 'Another script sets data on it', 'when data {1} is set to {2} on it', 'Fires when another script (or the code) sets a data field on it with the "set data" action.', [int('Field'), int('Value'), ...cooldown()]),
+  ev(39, 'ESCORT_START', 'Escort starts', 'when an escort starts', 'Fires when an escort path starts.', waypoint()),
+  ev(40, 'ESCORT_REACHED', 'Escort reaches a point', 'when the escort reaches point {1}', 'Fires when an escort reaches a waypoint.', waypoint()),
+  ev(41, 'TRANSPORT_ADDPLAYER', 'A player boards the transport', 'when a player boards the transport', 'Transport scripts only.'),
+  ev(42, 'TRANSPORT_ADDCREATURE', 'A creature boards the transport', 'when {1} boards the transport', 'Transport scripts only.', [creature('Creature', 'any')]),
+  ev(43, 'TRANSPORT_REMOVE_PLAYER', 'A player leaves the transport', 'when a player leaves the transport', 'Transport scripts only.'),
+  ev(44, 'TRANSPORT_RELOCATE', 'Transport reaches a point', 'when the transport reaches point {1}', 'Transport scripts only.', [int('Point id')]),
+  ev(45, 'INSTANCE_PLAYER_ENTER', 'A player enters the instance', 'when a player enters the instance', 'Instance scripts only.', [choice('Team', TEAMS), ...cooldown()]),
+  ev(46, 'AREATRIGGER_ONTRIGGER', 'A player enters an area trigger', 'when a player enters area trigger {1}', 'Fires when a player walks into the trigger. Used in area trigger scripts.', [areatrigger('Area trigger', 'any')]),
+  ev(47, 'QUEST_ACCEPTED', 'The quest is accepted', 'when the quest is accepted', 'Quest scripts only.'),
+  ev(48, 'QUEST_OBJ_COMPLETION', 'A quest objective is completed', 'when a quest objective is completed', 'Quest scripts only.'),
+  ev(49, 'QUEST_COMPLETION', 'The quest is completed', 'when the quest is completed', 'Quest scripts only.'),
+  ev(50, 'QUEST_REWARDED', 'The quest is turned in', 'when the quest is turned in', 'Quest scripts only.'),
+  ev(51, 'QUEST_FAIL', 'The quest fails', 'when the quest fails', 'Quest scripts only.'),
+  ev(52, 'TEXT_OVER', 'A line of text finishes', 'when text group {1} has been said', 'Fires when a line finishes, after the duration set on the say action.', [textGroup('Text group'), creature('Spoken by', 'anyone')]),
+  ev(53, 'RECEIVE_HEAL', 'It is healed', 'when it is healed', 'Fires when it receives healing in the range.', [lo(int('Heal: at least')), hi(int('Heal: at most')), ...cooldown()]),
+  ev(54, 'JUST_SUMMONED', 'It has just been summoned', 'when it has just been summoned', 'Fires when something else summons it.'),
+  ev(55, 'ESCORT_PAUSED', 'Escort pauses', 'when the escort pauses', 'Fires when an escort pauses.', waypoint()),
+  ev(56, 'ESCORT_RESUMED', 'Escort resumes', 'when the escort resumes', 'Fires when an escort resumes.', waypoint()),
+  ev(57, 'ESCORT_STOPPED', 'Escort stops', 'when the escort stops', 'Fires when an escort stops.', waypoint()),
+  ev(58, 'ESCORT_ENDED', 'Escort ends', 'when the escort ends', 'Fires when an escort reaches its end.', waypoint()),
+  ev(59, 'TIMED_EVENT_TRIGGERED', 'A timed event goes off', 'when timed event {1} goes off', 'Fires when a timer made by the "create timed event" action goes off.', [int('Timed event id')]),
+  ev(60, 'UPDATE', 'Timer, any time', 'on a timer', 'Fires on a timer whether it is fighting or not.', timers()),
+  ev(61, 'LINK', 'Right after the previous row', 'right after the previous step', 'Internal: fires as the next step of a linked row. The row before it names this one in its link column.'),
+  ev(62, 'GOSSIP_SELECT', 'A gossip option is picked', 'when gossip option {2} of menu {1} is picked', 'Fires when a player picks an option of one of its talk windows.', [gossipMenu('Menu'), int('Option id')]),
+  ev(63, 'JUST_CREATED', 'It has just been created', 'when it has just been created', 'Fires the first time it is added to the world.'),
+  ev(64, 'GOSSIP_HELLO', 'A player talks to it', 'when a player talks to it', 'Fires when a player opens its talk window or uses the object.', [choice('Fires', GOSSIP_HELLO_FILTERS)]),
+  ev(65, 'FOLLOW_COMPLETED', 'Finishes following', 'when it has finished following', 'Fires when the follow action ends.'),
+  ev(66, 'EVENT_PHASE_CHANGE', 'The script phase changes', 'when the script phase changes to one of {1}', 'Fires when the script moves into one of the phases.', [phaseMask('Phases')]),
+  ev(67, 'IS_BEHIND_TARGET', 'It is behind its target', 'when it is behind its target', 'Fires while it stands behind the unit it is fighting.', timers()),
+  ev(68, 'GAME_EVENT_START', 'A game event starts', 'when game event {1} starts', 'Fires when a holiday or game event begins.', [gameEvent('Game event')]),
+  ev(69, 'GAME_EVENT_END', 'A game event ends', 'when game event {1} ends', 'Fires when a holiday or game event ends.', [gameEvent('Game event')]),
+  ev(70, 'GO_STATE_CHANGED', 'The object changes state', 'when its state changes to {1}', 'Game objects: fires when the object opens, closes or changes state.', [choice('New state', GO_STATES)]),
+  ev(71, 'GO_EVENT_INFORM', 'The object is told of an event', 'when it is told of event {1}', 'Game objects: fires on a world event the object listens to.', [int('Event id')]),
+  ev(72, 'ACTION_DONE', 'Another script signals it', 'when another script signals action {1}', 'Fires when another script (the "do action" action) signals it.', [int('Action id'), ...cooldown()]),
+  ev(73, 'ON_SPELLCLICK', 'A player clicks it', 'when a player clicks it', 'Fires when a player uses spell click on it (a vehicle seat, for example).'),
+  ev(74, 'FRIENDLY_HEALTH_PCT', "A friend's health is low", 'when a friend within {6} yards is below {5}% health', 'Fires when a friendly unit nearby is under a health percentage.', [...timers('First fire', 'Repeat'), pct('Health %'), yards('Within (yards)')]),
+  ev(75, 'DISTANCE_CREATURE', 'A creature is near', 'when creature {2} is within {3} yards', 'Fires when a particular creature (by spawn guid or entry) is within a distance.', [int('Spawn guid', 'any'), creature('Entry', 'any'), yards('Distance'), ms('Check every')]),
+  ev(76, 'DISTANCE_GAMEOBJECT', 'An object is near', 'when object {2} is within {3} yards', 'Fires when a particular object (by spawn guid or entry) is within a distance.', [int('Spawn guid', 'any'), int('Entry', 'any'), yards('Distance'), ms('Check every')]),
+  ev(77, 'COUNTER_SET', 'A counter reaches a value', 'when counter {1} reaches {2}', 'Fires when a counter set by the "set counter" action reaches a value.', [int('Counter id'), int('Value'), ...cooldown()]),
+  ev(82, 'SUMMONED_UNIT_DIES', 'A summon dies', 'when its summon {1} dies', 'Fires when a creature it summoned dies. 0 means any.', [creature('Creature', 'any'), ...cooldown()]),
+  ev(101, 'NEAR_PLAYERS', 'Enough players are near', 'when at least {1} players are within {2} yards', 'Fires when at least this many players are within a range.', [int('At least this many'), yards('Within (yards)'), ms('First check after'), ...repeat()]),
+  ev(102, 'NEAR_PLAYERS_NEGATION', 'Too few players are near', 'when fewer than {1} players are within {2} yards', 'Fires when fewer than this many players are within a range.', [int('Fewer than'), yards('Within (yards)'), ms('First check after'), ...repeat()]),
+  ev(103, 'NEAR_UNIT', 'Enough units of one entry are near', 'when {3} of {2} are within {4} yards', 'Fires when at least this many creatures or objects of an entry are within a range.', [choice('Kind', UNIT_KINDS), int('Entry'), int('At least this many'), yards('Within (yards)'), ms('Check every')]),
+  ev(104, 'NEAR_UNIT_NEGATION', 'Too few units of one entry are near', 'when fewer than {3} of {2} are within {4} yards', 'Fires when fewer than this many creatures or objects of an entry are within a range.', [choice('Kind', UNIT_KINDS), int('Entry'), int('Fewer than'), yards('Within (yards)'), ms('Check every')]),
+  ev(105, 'AREA_CASTING', 'A unit in range is casting', 'when a unit {5} to {6} yards away is casting', 'Fires when a unit in a range is casting a spell.', [...timers(), lo(yards('Range: at least')), hi(yards('Range: at most'))]),
+  ev(106, 'AREA_RANGE', 'A unit is in range', 'when a unit is {5} to {6} yards away', 'Fires when a unit is inside a range.', [...timers(), lo(yards('Range: at least')), hi(yards('Range: at most'))]),
+  ev(107, 'SUMMONED_UNIT_EVADE', 'A summon evades', 'when its summon {1} evades', 'Fires when a creature it summoned evades. 0 means any.', [creature('Creature', 'any'), ...cooldown()]),
+  ev(108, 'WAYPOINT_REACHED', 'Reaches a waypoint', 'when it reaches waypoint {1}', 'Fires when it reaches a point on its path.', waypoint()),
+  ev(109, 'WAYPOINT_ENDED', 'Finishes its path', 'when it finishes its path', 'Fires when it reaches the end of its path.', waypoint()),
+  ev(110, 'IS_IN_MELEE_RANGE', 'Its target is in melee range', 'when its target is within melee range', 'Fires while its target is (or is not) in melee range.', [...timers(), yards('Distance'), bool('Invert', undefined, 'Fire when it is NOT in range.')]),
+];

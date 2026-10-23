@@ -8,6 +8,8 @@ import { MOVEMENT_TYPE } from '../world/movement';
 import { NPC_TYPE_VALUE, OBJECT_TYPE_VALUE, RANK_VALUE, TRAINER_TYPE_VALUE, type LootRow, type Patrol, type Page, type ProjectEntities } from './model';
 import { seenByColumns } from './visibility';
 import { serviceFlagBits } from '../game/gossip-services';
+import { SMART_AI_NAME } from '../smartai/lock';
+import { numberOf as smartNumber, type SmartRow } from '../smartai/row';
 
 /**
  * New NPCs and objects to template and spawn rows, in the same shape as compiled scripts so one
@@ -109,6 +111,17 @@ export function compileEntities(input: {
   const insert = (table: string, row: Row): void => {
     (out.inserts[table] ??= []).push(row);
   };
+  // The SmartAI rows an entity holds replace every row of the scripts they name: the keys are deleted, then the rows written
+  const writeSmart = (rows: readonly SmartRow[] | null): void => {
+    if (!rows) return;
+    const keys = new Map<string, Row>();
+    for (const row of rows) {
+      const key = { entryorguid: text(smartNumber(row, 'entryorguid')), source_type: text(smartNumber(row, 'source_type')) };
+      keys.set(`${key.entryorguid}/${key.source_type}`, key);
+      insert('smart_scripts', Object.fromEntries(Object.entries(row).filter((e): e is [string, string] => e[1] !== null)));
+    }
+    for (const key of keys.values()) (out.deletes.smart_scripts ??= []).push(key);
+  };
   const writePages = (pages: readonly Page[]): void => {
     pages.forEach((page, i) => {
       insert('page_text', { ID: text(page.id), Text: page.text, NextPageID: text(pages[i + 1]?.id ?? 0) });
@@ -165,7 +178,7 @@ export function compileEntities(input: {
       // Who sees it, every other flag bit as its row already has them
       ...seenByColumns(npc.seenBy ?? 'living', existing ?? {}),
       // A fight or things to do on its patrol run on SmartAI; otherwise keep what quest scripting may have set.
-      AIName: fightIsEmpty(npc.fight) && !hasPointActions(npc) ? (existing?.AIName ?? '') : 'SmartAI', // Its root menu; without one, what the database has, unless that menu is this project's own and is going
+      AIName: fightIsEmpty(npc.fight) && !hasPointActions(npc) && !(npc.smartScripts?.length) ? (existing?.AIName ?? '') : SMART_AI_NAME.npc, // Its root menu; without one, what the database has, unless that menu is this project's own and is going
       gossip_menu_id: npc.gossipMenu ? text(npc.gossipMenu.menus[0]!.menuId) : removable(num(existing?.gossip_menu_id)) ? '0' : (existing?.gossip_menu_id ?? '0'),
       // Creature loot is looked up by `lootid`; the NPC's own entry keeps its loot rows its own.
       ...(lootWritten > 0 ? { lootid: text(npc.entry) } : {}),
@@ -209,6 +222,7 @@ export function compileEntities(input: {
         });
       }
     }
+    writeSmart(npc.smartScripts);
     npc.vendor.forEach((v, slot) => {
       insert('npc_vendor', {
         entry: text(npc.entry), slot: text(slot), item: text(v.item), maxcount: text(v.maxCount),
@@ -241,8 +255,9 @@ export function compileEntities(input: {
     const existing = objectRows.get(object.entry);
     const row: Row = {
       entry: text(object.entry), type: text(OBJECT_TYPE_VALUE[object.type]), displayId: text(object.displayId), name: object.name,
-      size: text(object.size), AIName: existing?.AIName ?? '',
+      size: text(object.size), AIName: object.smartScripts?.length ? SMART_AI_NAME.object : (existing?.AIName ?? ''),
     };
+    writeSmart(object.smartScripts);
     // A chest's loot is looked up by `Data1`; using its own entry keeps its loot rows its own.
     if (object.type === 'chest') row.Data1 = text(object.entry);
     // The page an object opens when used: a readable object's `Data0`, a usable object's `Data7`.
