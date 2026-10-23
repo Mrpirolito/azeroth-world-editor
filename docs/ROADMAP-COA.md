@@ -136,6 +136,32 @@ Still open after this branch: the creature loot and chest loot lists of the Loot
   loads last, plus the SQL patch.
 - Later: other DBCs (SpellIcon, Item display, Faction, Map/Area) with the same generic editor.
 
+### Step 0: the CoA client files (checked on the repack's `Data/dbc`)
+
+The server format strings (`DBCfmt.h`) and structs (`DBCStructure.h`) are the truth; the files agree with stock 3.3.5a for every table the editor changes, so nothing needs a special layout.
+
+| File | Records | Fields | Record size | String block | Note |
+|---|---|---|---|---|---|
+| Spell.dbc | 209,513 | 234 | 936 | 13,401,459 | stock layout; highest id 13,977,920; the fork's `spell_dbc` table has 64-bit ShapeshiftMask and ShapeshiftExclude (fields 12-13 and 14-15 of the file) |
+| SpellIcon.dbc | 16,396 | 2 | 8 | 656,123 | client only (no server format): id, texture path |
+| SpellRange.dbc | 323 | 40 | 160 | 3,707 | min/max hostile and friendly, flags, two 16-language names |
+| SpellCastTimes.dbc | 71 | 4 | 16 | 0 | id, base ms, per level, minimum |
+| SpellDuration.dbc | 866 | 4 | 16 | 0 | id, duration ms, per level, maximum |
+| SpellRadius.dbc | 318 | 4 | 16 | 0 | id, radius, per level, maximum (floats) |
+| Item.dbc | 563,790 | 8 | 32 | 0 | id, class, subclass, sound override, material, display, inventory type, sheathe |
+| ItemDisplayInfo.dbc | 129,695 | 25 | 100 | 3,596,455 | strings at 1-6 and 15-22 |
+| Faction.dbc | 417 | 57 | 228 | 17,938 | |
+| AreaTable.dbc | 2,849 | 36 | 144 | 40,972 | |
+
+The string blocks are not canonical: strings share tails, and an empty string of another language often points at a
+non-zero offset (some records hold other data in the non-English text slots of Spell.dbc). The writer therefore keeps the
+block a file came with and appends new strings (deduplicated; a file's first empty string is the empty string), so an
+untouched file is written back byte for byte. `Dbc.compact` rebuilds a block canonically (offset 0 empty) for formats that
+name every string. Layouts live in `src/core/game/dbc-formats.ts`; a test compares them with the server format strings.
+
+The fork's DDL (`data/sql/base/db_world`) has all of spell_dbc, spell_custom_attr, spell_proc, spell_bonus_data, spell_group,
+spell_linked_spell, spell_target_position, spell_area and spell_script_names.
+
 ## Open decisions
 
 - AGPL code copying vs. clean reimplementation (above).
