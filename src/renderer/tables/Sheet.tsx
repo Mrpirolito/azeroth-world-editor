@@ -1,5 +1,7 @@
 import { setSummary } from '@core/tables/rowset';
 import type { Field, Row, RowSet, TableSpec } from '@core/tables/types';
+import { LOOT_SOURCE } from '@core/conditions/catalogue';
+import { ConditionsDetails } from './ConditionsEditor';
 import { SheetField } from './SheetField';
 import { useRowSet } from './useRowSet';
 import './sheets.css';
@@ -47,7 +49,7 @@ function RowFields({ idPrefix, spec, row, columns, context, onChange }: { idPref
 }
 
 /** Loot rows beside each other, with a total for every group so a chance that cannot be met is seen at once */
-function LootRows({ idPrefix, spec, rows, columns, onRow, onRemove }: { idPrefix: string; spec: TableSpec; rows: readonly Row[]; columns: readonly string[]; onRow(i: number, column: string, value: string | null): void; onRemove(i: number): void }): React.JSX.Element {
+function LootRows({ idPrefix, spec, rows, columns, listId, owner, onRow, onRemove }: { idPrefix: string; spec: TableSpec; rows: readonly Row[]; columns: readonly string[]; listId: number; owner?: RowSet['owner']; onRow(i: number, column: string, value: string | null): void; onRemove(i: number): void }): React.JSX.Element {
   const totals = new Map<number, { items: number; chance: number }>();
   for (const row of rows) {
     const group = Number(row.GroupId ?? 0);
@@ -71,6 +73,9 @@ function LootRows({ idPrefix, spec, rows, columns, onRow, onRemove }: { idPrefix
                 <summary>Advanced</summary>
                 <div className="sheet-grid">{rest.map((f) => <SheetField key={f.column} id={`${idPrefix}-${i}-${f.column}`} field={f} row={row} onChange={(c, v) => onRow(i, c, v)} />)}</div>
               </details>
+            )}
+            {LOOT_SOURCE[spec.table] !== undefined && Number(row.Item ?? 0) > 0 && listId > 0 && (
+              <ConditionsDetails source={{ type: LOOT_SOURCE[spec.table]!, group: listId, entry: Number(row.Item) }} owner={owner} idPrefix={`${idPrefix}-${i}-cond`} label="Only drops when" />
             )}
           </li>
         ))}
@@ -124,7 +129,7 @@ export function Sheet({ spec, scope, owner, idPrefix, title, context = {} }: { s
     <section className="scene-section sheet" aria-label={title ?? spec.title}>
       {heading}
       {spec.loot ? (
-        <LootRows idPrefix={idPrefix} spec={spec} rows={rows} columns={set.columns} onRow={edit} onRemove={(i) => set.change(rows.filter((_, j) => j !== i))} />
+        <LootRows idPrefix={idPrefix} spec={spec} rows={rows} columns={set.columns} listId={Number(scope[spec.scope[0]!] ?? 0)} owner={owner} onRow={edit} onRemove={(i) => set.change(rows.filter((_, j) => j !== i))} />
       ) : (
         <ol className="scene-steps">
           {rows.map((row, i) => (

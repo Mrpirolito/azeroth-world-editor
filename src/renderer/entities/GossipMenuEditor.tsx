@@ -2,6 +2,8 @@ import type { CustomNpc, GossipMenu, GossipOption, GossipTree, TextVariant } fro
 import { nextOptionId } from '@core/entities/gossip-tree';
 import { GOSSIP_SERVICES, serviceFlagBits, serviceLabel, serviceOf } from '@core/game/gossip-services';
 import { NumberField, SelectField, TextField } from '../scripts/fields';
+import { GOSSIP_OPTION_SOURCE } from '@core/conditions/catalogue';
+import { ConditionsDetails } from '../tables/ConditionsEditor';
 
 const MAX_VARIANTS = 8;
 const NEW_MENU = '__new';
@@ -168,6 +170,7 @@ export function GossipMenuEditor({
                 </p>
               )}
               <ServiceNote option={o} npc={npc} onTab={onTab} />
+              <ConditionsDetails source={{ type: GOSSIP_OPTION_SOURCE, group: menu.menuId, entry: o.optionId }} owner={{ kind: 'creature', entry: npc.entry }} idPrefix={`gossip-${menu.menuId}-${o.optionId}`} label="Only shown when" />
             </li>
           );
         })}

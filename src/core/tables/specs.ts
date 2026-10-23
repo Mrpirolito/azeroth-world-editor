@@ -311,6 +311,22 @@ export const SPECS: readonly TableSpec[] = [
     blank: { dist: '0', angle: '0', groupAI: '0', point_1: '0', point_2: '0' },
   },
   {
+    table: 'conditions', title: 'Conditions', blurb: 'What must be true before a loot row, a gossip option, a vendor item, a SmartAI event or a quest applies. Rows with the same else-group all have to hold; any one group is enough.', owner: 'standalone',
+    scope: ['SourceTypeOrReferenceId', 'SourceGroup', 'SourceEntry', 'SourceId'],
+    pk: ['SourceTypeOrReferenceId', 'SourceGroup', 'SourceEntry', 'SourceId', 'ElseGroup', 'ConditionTypeOrReference', 'ConditionTarget', 'ConditionValue1', 'ConditionValue2', 'ConditionValue3'],
+    multi: true,
+    fields: [
+      int('ElseGroup', 'Alternative', { min: 0, help: 'Conditions in one alternative all have to hold; any alternative is enough.' }),
+      int('ConditionTypeOrReference', 'Condition', { help: 'A condition type, or a negative number: the shared condition with that id.' }),
+      choice('ConditionTarget', 'Looks at', [[0, 'the player (or first object)'], [1, 'the second object'], [2, 'the third object']]),
+      int('ConditionValue1', 'Value 1'), int('ConditionValue2', 'Value 2'), int('ConditionValue3', 'Value 3'),
+      bool('NegativeCondition', 'Must NOT hold'),
+      int('ErrorType', 'Error type', { group: 'Advanced' }), int('ErrorTextId', 'Error text', { group: 'Advanced' }),
+      text('ScriptName', 'C++ script', { group: 'Advanced' }), text('Comment', 'Note', { group: 'Advanced' }),
+    ],
+    blank: { ElseGroup: '0', ConditionTypeOrReference: '0', ConditionTarget: '0', ConditionValue1: '0', ConditionValue2: '0', ConditionValue3: '0', NegativeCondition: '0', ErrorType: '0', ErrorTextId: '0', ScriptName: '', Comment: '' },
+  },
+  {
     table: 'creature_immunities', title: 'Immunity sets', blurb: 'The magic schools, mechanics, effects and auras a creature ignores; creatures point at a set by its id.', owner: 'standalone',
     scope: ['ID'], pk: ['ID'], multi: false, search: ['Comment'], nameColumn: 'Comment',
     fields: [

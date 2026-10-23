@@ -110,7 +110,7 @@ export function NpcEditor({
         </p>
       ) : (
         <>
-          <VendorList idPrefix={`npc-${npc.entry}`} vendor={npc.vendor} onChange={(vendor) => onChange({ ...npc, vendor })} hasServerData={hasServerData} />
+          <VendorList idPrefix={`npc-${npc.entry}`} vendor={npc.vendor} onChange={(vendor) => onChange({ ...npc, vendor })} hasServerData={hasServerData} npcEntry={npc.entry} />
           <CopyStock idPrefix={`npc-${npc.entry}`} npcEntry={npc.entry} current={npc.vendor} onCopy={(vendor) => onChange({ ...npc, vendor })} />
         </>
       ),

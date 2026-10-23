@@ -169,3 +169,34 @@
   color: var(--text-muted);
   font-weight: 600;
 }
+
+.conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.conditions__group {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conditions__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+
+.conditions__says {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted);
+}

@@ -4,6 +4,8 @@ import { formatCoin } from '@core/format/coin';
 import { EntityField, NumberField } from '../scripts/fields';
 import { useApi } from '../state/names';
 import { useProjectEntities } from '../state/project-entities';
+import { VENDOR_SOURCE } from '@core/conditions/catalogue';
+import { ConditionsDetails } from '../tables/ConditionsEditor';
 
 const NEW_ROW: VendorItem = { item: 0, maxCount: 0, restockSecs: 0, extendedCost: 0 };
 /** Limited stock the server would not load without a restock time, so it starts at fifteen minutes */
@@ -35,8 +37,8 @@ function BuyPrice({ item }: { item: number }): React.JSX.Element | null {
 
 /** What a new or existing NPC sells: each item with how many it has, how often it restocks and what besides gold it costs */
 export function VendorList({
-  idPrefix, vendor, onChange, hasServerData,
-}: { idPrefix: string; vendor: readonly VendorItem[]; onChange(next: VendorItem[]): void; hasServerData: boolean }): React.JSX.Element {
+  idPrefix, vendor, onChange, hasServerData, npcEntry,
+}: { idPrefix: string; vendor: readonly VendorItem[]; onChange(next: VendorItem[]): void; hasServerData: boolean; npcEntry?: number }): React.JSX.Element {
   const api = useApi();
   // Why extended costs cannot be named though a server data folder is set (its file is missing or damaged)
   const [costsWhy, setCostsWhy] = useState<string | null>(null);
@@ -92,6 +94,9 @@ export function VendorList({
                   <NumberField label="Restock (seconds)" value={row.maxCount === 0 ? 0 : row.restockSecs} min={0} disabled={row.maxCount === 0}
                     onChange={(n) => set(i, { ...row, restockSecs: count(n) })} />
                 </div>
+                {npcEntry !== undefined && row.item > 0 && (
+                  <ConditionsDetails source={{ type: VENDOR_SOURCE, group: npcEntry, entry: row.item }} owner={{ kind: 'creature', entry: npcEntry }} idPrefix={`${idPrefix}-vendor${i}`} label="Only sold when" />
+                )}
                 {namedCosts ? (
                   <EntityField id={`${idPrefix}-vendor${i}-cost`} label="Extended cost" kind="extendedCost" value={row.extendedCost}
                     onChange={(extendedCost) => set(i, { ...row, extendedCost })} />

@@ -170,6 +170,7 @@ export function SmartScriptEditor({
                 onChange={(next) => onChange(rows.map((r) => (r === row ? next : r)))}
                 onRemove={() => onChange(removeRow(rows, row))}
                 onOpenList={openList}
+                owner={{ kind: owner.kind === 'creature' ? 'creature' : 'gameobject', entry: owner.entry }}
               />
             </div>
           ))}

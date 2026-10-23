@@ -7,6 +7,9 @@ import type { TypeDef, TypeKind } from '@core/smartai/types';
 import { NumberField } from '../scripts/fields';
 import { BitToggles, ParamField, type FieldContext } from './ParamField';
 import { TypePicker } from './TypePicker';
+import { SMART_EVENT_SOURCE } from '@core/conditions/catalogue';
+import type { RowSet } from '@core/tables/types';
+import { ConditionsDetails } from '../tables/ConditionsEditor';
 
 const LIST_ACTIONS: ReadonlySet<number> = new Set([80, 87, 88]);
 
@@ -50,8 +53,10 @@ function Column({ kind, title, row, idPrefix, onChange, ctx, source }: {
  * fields, the phase, chance and flags folded in one place and every raw column folded in another.
  */
 export function RowEditor({
-  row, idPrefix, source, ctx, names, issues, onChange, onRemove, onOpenList, removeLabel,
+  row, idPrefix, source, ctx, names, issues, onChange, onRemove, onOpenList, removeLabel, owner,
 }: {
+  /** Who owns the script, so the conditions of its events leave with it */
+  owner?: RowSet['owner'];
   row: SmartRow;
   idPrefix: string;
   /** The script's `source_type`, which decides which events fit */
@@ -93,6 +98,9 @@ export function RowEditor({
         <NumberField label="Chance it fires (%)" value={numberOf(row, 'event_chance')} min={0} onChange={(v) => onChange(withColumn(row, 'event_chance', v))} disabled={ctx.disabled} />
         <BitToggles label="Event flags" bits={EVENT_FLAG_BITS} value={numberOf(row, 'event_flags')} onChange={(v) => onChange(withColumn(row, 'event_flags', v))} disabled={ctx.disabled} />
       </details>
+      {!ctx.disabled && (
+        <ConditionsDetails source={{ type: SMART_EVENT_SOURCE, group: numberOf(row, 'id') + 1, entry: numberOf(row, 'entryorguid'), id: numberOf(row, 'source_type') }} owner={owner} idPrefix={idPrefix} label="Only runs when" />
+      )}
       <details className="sai-row__adv">
         <summary>Advanced: the raw columns</summary>
         <div className="sai-adv">
