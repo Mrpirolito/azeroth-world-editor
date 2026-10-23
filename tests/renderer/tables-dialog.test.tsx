@@ -37,7 +37,7 @@ describe('Database tables dialog', () => {
     store = EMPTY_ENTITIES;
     render(<Dialog api={mockApi()} />);
     const buttons = within(screen.getByRole('navigation', { name: 'Tables' })).getAllByRole('button').map((b) => b.textContent);
-    expect(buttons).toEqual(['Reference loot lists', 'Fishing loot', 'Mail loot', 'Spell loot', 'Broadcast texts', 'Gossip texts', 'Book pages', 'Server strings', 'Teleport places', 'Formations', 'Immunity sets', 'Random enchantments', 'Spawn appearance and auras', 'Object spawn extras', 'Changed here', 'Free ids', 'SQL console']);
+    expect(buttons).toEqual(['Reference loot lists', 'Fishing loot', 'Mail loot', 'Spell loot', 'Broadcast texts', 'Gossip texts', 'Book pages', 'Server strings', 'Teleport places', 'Formations', 'Immunity sets', 'Random enchantments', 'Spawn appearance and auras', 'Object spawn extras', 'Server spell copy', 'Custom flags', 'Proc rules', 'Spell power scaling', 'Stacking groups', 'Linked spells', 'Teleport destinations', 'Where it applies', 'C++ scripts', 'Changed here', 'Free ids', 'SQL console']);
     expect(screen.getByRole('heading', { name: 'Reference loot lists' })).toBeTruthy();
   });
 

@@ -1,8 +1,10 @@
 import type { Choice } from '../smartai/types';
 import {
-  CREATURE_FAMILIES, DYNAMIC_FLAGS, FLAGS_EXTRA, GAMEOBJECT_FLAGS, GOSSIP_EMOTES, LANGUAGES, LOOT_MODES, MOVEMENT_TYPES, SCHOOLS, STAND_STATES, TEXT_RANGES, TEXT_TYPES,
+  CREATURE_FAMILIES, DYNAMIC_FLAGS, FLAGS_EXTRA, GAMEOBJECT_FLAGS, GOSSIP_EMOTES, LANGUAGES, LOOT_MODES, MOVEMENT_TYPES, SCHOOL_MASK, SCHOOLS, STAND_STATES, TEXT_RANGES, TEXT_TYPES,
   TYPE_FLAGS, UNIT_CLASSES, UNIT_FLAGS, UNIT_FLAGS2, VIS_DISTANCES,
+  PROC_ATTRIBUTES, PROC_FLAGS, PROC_HITS, PROC_PHASES, PROC_SPELL_TYPES, SPELL_CUSTOM_ATTRIBUTES, SPELL_LINK_TYPES,
 } from './flags';
+import { POWER_TYPES } from '../spells/catalogue';
 import type { Field, FieldType, Row, TableSpec } from './types';
 
 /**
@@ -382,6 +384,106 @@ export const SPECS: readonly TableSpec[] = [
       bool('ImmuneAoE', 'Ignores area spells'), bool('ImmuneChain', 'Ignores chain spells'),
     ],
     blank: { SchoolMask: '0', DispelTypeMask: '0', MechanicsMask: '0', ImmuneAoE: '0', ImmuneChain: '0' },
+  },
+  // ---- Spells (the database side of a spell; the spell editor shows these as tabs)
+  {
+    table: 'spell_dbc', title: 'Server spell copy', blurb: 'A whole spell kept in the database: the server reads these rows over Spell.dbc (the client does not, so a spell only here is invisible to players). The spell editor writes the file instead.', owner: 'standalone',
+    scope: ['ID'], pk: ['ID'], multi: false, search: ['Name_Lang_enUS'], nameColumn: 'Name_Lang_enUS',
+    fields: [
+      text('Name_Lang_enUS', 'Name', { group: 'Basics' }), text('NameSubtext_Lang_enUS', 'Rank', { group: 'Basics' }),
+      text('Description_Lang_enUS', 'Description', { long: true, group: 'Basics' }), text('AuraDescription_Lang_enUS', 'Tooltip while active', { long: true, group: 'Basics' }),
+      int('SpellIconID', 'Icon id', { group: 'Basics' }), flags('SchoolMask', 'School', SCHOOL_MASK, { group: 'Basics' }),
+      choice('PowerType', 'Costs', POWER_TYPES, { group: 'Basics' }), int('ManaCost', 'Cost', { group: 'Basics' }),
+      int('CastingTimeIndex', 'Cast time id', { group: 'Casting', help: 'A row of SpellCastTimes.dbc.' }), int('RecoveryTime', 'Cooldown (ms)', { group: 'Casting' }),
+      int('CategoryRecoveryTime', 'Category cooldown (ms)', { group: 'Casting' }), int('RangeIndex', 'Range id', { group: 'Casting', help: 'A row of SpellRange.dbc.' }),
+      int('DurationIndex', 'Duration id', { group: 'Casting', help: 'A row of SpellDuration.dbc.' }), int('StartRecoveryTime', 'Global cooldown (ms)', { group: 'Casting' }),
+      ...[1, 2, 3].flatMap((n): Field[] => [
+        int(`Effect_${n}`, `Effect ${n}`, { group: `Effect ${n}` }), int(`EffectBasePoints_${n}`, `Effect ${n} base points`, { group: `Effect ${n}`, help: 'One less than the value.' }),
+        int(`EffectDieSides_${n}`, `Effect ${n} dice`, { group: `Effect ${n}` }), int(`ImplicitTargetA_${n}`, `Effect ${n} target A`, { group: `Effect ${n}` }),
+        int(`ImplicitTargetB_${n}`, `Effect ${n} target B`, { group: `Effect ${n}` }), int(`EffectAura_${n}`, `Effect ${n} aura`, { group: `Effect ${n}` }),
+        int(`EffectAuraPeriod_${n}`, `Effect ${n} tick (ms)`, { group: `Effect ${n}` }), int(`EffectRadiusIndex_${n}`, `Effect ${n} radius id`, { group: `Effect ${n}` }),
+        int(`EffectMiscValue_${n}`, `Effect ${n} misc value`, { group: `Effect ${n}` }), int(`EffectTriggerSpell_${n}`, `Effect ${n} casts`, { group: `Effect ${n}` }),
+      ]),
+      int('Attributes', 'Attributes', { group: 'Advanced' }), int('AttributesEx', 'Attributes Ex', { group: 'Advanced' }), int('AttributesEx2', 'Attributes Ex2', { group: 'Advanced' }),
+      int('AttributesEx3', 'Attributes Ex3', { group: 'Advanced' }), int('AttributesEx4', 'Attributes Ex4', { group: 'Advanced' }), int('AttributesEx5', 'Attributes Ex5', { group: 'Advanced' }),
+      int('AttributesEx6', 'Attributes Ex6', { group: 'Advanced' }), int('AttributesEx7', 'Attributes Ex7', { group: 'Advanced' }),
+      int('InterruptFlags', 'Interrupt flags', { group: 'Advanced' }), int('AuraInterruptFlags', 'Aura interrupt flags', { group: 'Advanced' }), int('ChannelInterruptFlags', 'Channel interrupt flags', { group: 'Advanced' }),
+      int('ProcTypeMask', 'Proc flags', { group: 'Advanced' }), int('ProcChance', 'Proc chance', { group: 'Advanced', min: 0, max: 100 }), int('ProcCharges', 'Proc charges', { group: 'Advanced' }),
+      int('BaseLevel', 'Base level', { group: 'Advanced' }), int('MaxLevel', 'Highest level', { group: 'Advanced' }), int('SpellLevel', 'Spell level', { group: 'Advanced' }),
+      int('Mechanic', 'Mechanic', { group: 'Advanced' }), int('DispelType', 'Dispel type', { group: 'Advanced' }),
+    ],
+  },
+  {
+    table: 'spell_custom_attr', title: 'Custom flags', blurb: 'Extra behaviour the server gives a spell on top of its DBC attributes.', owner: 'standalone',
+    scope: ['spell_id'], pk: ['spell_id'], multi: false,
+    fields: [flags('attributes', 'Server flags', SPELL_CUSTOM_ATTRIBUTES)],
+    blank: { attributes: '0' },
+  },
+  {
+    table: 'spell_proc', title: 'Proc rules', blurb: 'When an aura spell triggers: what must happen, how often, how many times. Overrides the proc fields of the DBC.', owner: 'standalone',
+    scope: ['SpellId'], pk: ['SpellId'], multi: false,
+    fields: [
+      flags('ProcFlags', 'Procs when', PROC_FLAGS, { group: 'When' }), flags('SpellTypeMask', 'Only for', PROC_SPELL_TYPES, { group: 'When' }),
+      flags('SpellPhaseMask', 'At the stage', PROC_PHASES, { group: 'When' }), flags('HitMask', 'On the result', PROC_HITS, { group: 'When' }),
+      float('Chance', 'Chance (%)', { group: 'How often', zero: "the spell's own chance" }), float('ProcsPerMinute', 'Procs per minute', { group: 'How often', zero: 'use the chance' }),
+      int('Cooldown', 'Cooldown (ms)', { group: 'How often' }), int('Charges', 'Charges', { group: 'How often', zero: "the spell's own" }),
+      flags('AttributesMask', 'Special rules', PROC_ATTRIBUTES, { group: 'Advanced' }), int('DisableEffectsMask', 'Effects that cannot proc (mask)', { group: 'Advanced' }),
+      int('SchoolMask', 'Only schools (mask)', { group: 'Advanced' }), int('SpellFamilyName', 'Only spell family', { group: 'Advanced' }),
+      int('SpellFamilyMask0', 'Family mask 0', { group: 'Advanced' }), int('SpellFamilyMask1', 'Family mask 1', { group: 'Advanced' }), int('SpellFamilyMask2', 'Family mask 2', { group: 'Advanced' }),
+    ],
+    blank: { SchoolMask: '0', SpellFamilyName: '0', SpellFamilyMask0: '0', SpellFamilyMask1: '0', SpellFamilyMask2: '0', ProcFlags: '0', SpellTypeMask: '0', SpellPhaseMask: '0', HitMask: '0', AttributesMask: '0', DisableEffectsMask: '0', ProcsPerMinute: '0', Chance: '0', Cooldown: '0', Charges: '0' },
+  },
+  {
+    table: 'spell_bonus_data', title: 'Spell power scaling', blurb: "How much of the caster's spell power or attack power adds to a spell, per direct hit and per tick.", owner: 'standalone',
+    scope: ['entry'], pk: ['entry'], multi: false,
+    fields: [
+      float('direct_bonus', 'Spell power on the hit', { help: '1 = the full amount.' }), float('dot_bonus', 'Spell power per tick'),
+      float('ap_bonus', 'Attack power on the hit'), float('ap_dot_bonus', 'Attack power per tick'), text('comments', 'Note', { nullable: true }),
+    ],
+    blank: { direct_bonus: '0', dot_bonus: '0', ap_bonus: '0', ap_dot_bonus: '0' },
+  },
+  {
+    table: 'spell_group', title: 'Stacking groups', blurb: "Spells in one group exclude each other by the group's stacking rule; here, the groups this spell belongs to.", owner: 'standalone',
+    scope: ['spell_id'], pk: ['id', 'spell_id'], multi: true,
+    fields: [int('id', 'Group id', { min: 1, help: "The groups' rules are in spell_group_stack_rules." })],
+    blank: { id: '1' },
+  },
+  {
+    table: 'spell_linked_spell', title: 'Linked spells', blurb: 'Spells cast, hit or kept together with this one.', owner: 'standalone',
+    scope: ['spell_trigger'], pk: ['spell_trigger', 'spell_effect', 'type'], multi: true,
+    fields: [
+      ref('spell_effect', 'Linked spell', 'spell', { help: 'A negative number removes that aura (or makes immune, for the aura kind).' }),
+      choice('type', 'How', SPELL_LINK_TYPES), text('comment', 'Note'),
+    ],
+    blank: { spell_effect: '0', type: '0', comment: '' },
+  },
+  {
+    table: 'spell_target_position', title: 'Teleport destinations', blurb: 'Where a teleport or summon effect of this spell sends its target, per effect.', owner: 'standalone',
+    scope: ['ID'], pk: ['ID', 'EffectIndex'], multi: true,
+    fields: [
+      choice('EffectIndex', 'Effect', [[0, 'Effect 1'], [1, 'Effect 2'], [2, 'Effect 3']]), int('MapID', 'Map'),
+      float('PositionX', 'X'), float('PositionY', 'Y'), float('PositionZ', 'Z'), float('Orientation', 'Facing (rad)'),
+      int('VerifiedBuild', 'Verified build', { nullable: true, group: 'Advanced' }),
+    ],
+    blank: { EffectIndex: '0', MapID: '0', PositionX: '0', PositionY: '0', PositionZ: '0', Orientation: '0' },
+    next: (rows) => ({ EffectIndex: String(Math.min(2, rows.length)) }),
+  },
+  {
+    table: 'spell_area', title: 'Where it applies', blurb: 'Zones and conditions in which this aura spell is applied by itself or is allowed.', owner: 'standalone',
+    scope: ['spell'], pk: ['spell', 'area', 'quest_start', 'aura_spell', 'racemask', 'gender'], multi: true,
+    fields: [
+      int('area', 'Zone or area', { zero: 'anywhere' }), ref('quest_start', 'Needs quest', 'quest', { help: 'Active once this quest is taken or done (see the statuses).' }),
+      ref('quest_end', 'Until quest', 'quest'), ref('aura_spell', 'Needs aura', 'spell', { help: 'Negative: applies only when the player lacks that aura.' }),
+      int('racemask', 'Races (mask)', { zero: 'all races' }), choice('gender', 'Gender', [[0, 'Male'], [1, 'Female'], [2, 'Either']]),
+      bool('autocast', 'Cast automatically'), int('quest_start_status', 'Start quest status (mask)', { group: 'Advanced' }), int('quest_end_status', 'End quest status (mask)', { group: 'Advanced' }),
+    ],
+    blank: { area: '0', quest_start: '0', quest_end: '0', aura_spell: '0', racemask: '0', gender: '2', autocast: '0', quest_start_status: '64', quest_end_status: '11' },
+  },
+  {
+    table: 'spell_script_names', title: 'C++ scripts', blurb: "The compiled spell scripts attached to this spell (by the name the server's code registers).", owner: 'standalone',
+    scope: ['spell_id'], pk: ['spell_id', 'ScriptName'], multi: true,
+    fields: [text('ScriptName', 'Script name', { help: 'Must match a script the server was built with; the server logs and ignores unknown names.' })],
+    blank: { ScriptName: '' },
   },
 ];
 

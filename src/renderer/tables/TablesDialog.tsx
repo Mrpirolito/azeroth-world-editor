@@ -14,6 +14,7 @@ const GROUPS: { title: string; tables: string[] }[] = [
   { title: 'Texts', tables: ['broadcast_text', 'npc_text', 'page_text', 'acore_string'] },
   { title: 'World', tables: ['game_tele', 'creature_formations', 'creature_immunities', 'item_enchantment_template'] },
   { title: 'Placed spawns', tables: ['creature_addon', 'gameobject_addon'] },
+  { title: 'Spells', tables: ['spell_dbc', 'spell_custom_attr', 'spell_proc', 'spell_bonus_data', 'spell_group', 'spell_linked_spell', 'spell_target_position', 'spell_area', 'spell_script_names'] },
 ];
 const TOOLS = ['Changed here', 'Free ids', 'SQL console'] as const;
 type Tool = (typeof TOOLS)[number];

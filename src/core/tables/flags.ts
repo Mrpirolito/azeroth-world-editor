@@ -173,3 +173,34 @@ export const GOSSIP_EMOTES: readonly Choice[] = [
   [0, 'None'], [1, 'Talk'], [2, 'Bow'], [3, 'Wave'], [4, 'Cheer'], [5, 'Exclamation'], [6, 'Question'], [7, 'Eat'], [10, 'Dance'],
   [11, 'Laugh'], [14, 'Rude'], [15, 'Roar'], [16, 'Kneel'], [17, 'Kiss'], [18, 'Cry'], [20, 'Salute'], [21, 'Shy'], [273, 'Yes'], [274, 'No'],
 ];
+
+// ---- Spells (spell_proc, spell_custom_attr, spell_linked_spell)
+export const PROC_FLAGS = bits([
+  [0, 'It is killed'], [1, 'It kills something'], [2, 'It makes a melee auto attack'], [3, 'It takes a melee auto attack'],
+  [4, 'It lands a melee-class spell'], [5, 'It takes a melee-class spell'], [6, 'It makes a ranged auto attack'], [7, 'It takes a ranged auto attack'],
+  [8, 'It lands a ranged-class spell'], [9, 'It takes a ranged-class spell'], [10, 'It casts a helpful spell (no class)'], [11, 'It receives a helpful spell (no class)'],
+  [12, 'It casts a harmful spell (no class)'], [13, 'It receives a harmful spell (no class)'], [14, 'It casts a helpful magic spell'], [15, 'It receives a helpful magic spell'],
+  [16, 'It casts a harmful magic spell'], [17, 'It receives a harmful magic spell'], [18, 'It deals periodic damage or healing'], [19, 'It takes periodic damage or healing'],
+  [20, 'It takes any damage'], [21, 'It triggers a trap'], [22, 'Main-hand attack'], [23, 'Off-hand attack'], [24, 'It dies'],
+]);
+export const PROC_SPELL_TYPES = bits([[0, 'Damage spells'], [1, 'Healing spells'], [2, 'Other spells']]);
+export const PROC_PHASES = bits([[0, 'On cast'], [1, 'On hit'], [2, 'On finish']]);
+export const PROC_HITS = bits([
+  [0, 'Normal hit'], [1, 'Critical hit'], [2, 'Miss'], [3, 'Fully resisted'], [4, 'Dodge'], [5, 'Parry'], [6, 'Block'], [7, 'Evade'], [8, 'Immune'], [9, 'Deflect'], [10, 'Absorb'], [11, 'Reflect'], [13, 'Full block'],
+]);
+export const PROC_ATTRIBUTES = bits([
+  [0, 'Target must give experience or honor'], [1, 'Triggered spells can proc it'], [2, 'Triggering spell must cost mana'], [3, 'Triggering spell must be affected by it'],
+  [4, 'Use stacks instead of charges'], [7, 'Less often above level 60'], [8, 'Not from item casts'],
+]);
+export const SPELL_CUSTOM_ATTRIBUTES = bits([
+  [0, 'Enchant proc'], [1, 'Cone behind'], [2, 'Cone line'], [3, 'Share damage'], [4, 'No initial threat'], [5, 'Aura is crowd control'], [6, 'Does not break stealth'], [7, 'No PvP flag'],
+  [8, 'Direct damage'], [9, 'Charge'], [10, 'Pickpocket'], [11, 'Ignores evade'], [12, 'Effect 1 harmful'], [13, 'Effect 2 harmful'], [14, 'Effect 3 harmful'], [15, 'Ignores armor'],
+  [16, 'Target must face caster'], [17, 'Caster must be behind target'], [18, 'Hits targets in flight'], [19, 'Needs ammo data'], [20, 'Binary spell'], [21, 'No positive bonus on taken'],
+  [22, 'Single aura stack'], [23, 'Physical with magic'], [24, 'Aura cannot be saved'], [25, 'Effect 1 helpful'], [26, 'Effect 2 helpful'], [27, 'Effect 3 helpful'],
+  [28, 'Force category cooldowns'], [29, 'Only one area aura'], [30, 'Encounter reward'],
+]);
+export const SPELL_LINK_TYPES: readonly Choice[] = [
+  [0, 'When the trigger is cast: cast the effect (a negative effect removes that aura)'],
+  [1, 'When the trigger hits: cast the effect'],
+  [2, 'While the trigger aura lasts: keep the effect aura (a negative effect makes the target immune)'],
+];
