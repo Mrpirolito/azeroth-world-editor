@@ -43,6 +43,17 @@ function TemplateVia({ spec, npc }: { spec: TableSpec; npc: CustomNpc }): React.
   );
 }
 
+/** Further looks and equipment sets, under the first ones the Look tab edits */
+export function NpcMoreLooks({ npc }: { npc: CustomNpc }): React.JSX.Element {
+  const owner = ownerOf('creature', npc.entry);
+  return (
+    <>
+      <Sheet spec={need('creature_template_model')} scope={{ CreatureID: String(npc.entry) }} owner={owner} idPrefix={`npc-${npc.entry}-models`} />
+      <Sheet spec={need('creature_equip_template')} scope={{ CreatureID: String(npc.entry) }} owner={owner} idPrefix={`npc-${npc.entry}-equip`} />
+    </>
+  );
+}
+
 /** The Traits tab: the template columns the Basics tab leaves out, in groups */
 export function NpcTraits({ npc }: { npc: CustomNpc }): React.JSX.Element {
   return (

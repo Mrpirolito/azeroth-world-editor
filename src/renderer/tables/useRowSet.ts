@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { findSet, withSet } from '@core/tables/rowset';
+import { findSet, rowsetIssues, withSet } from '@core/tables/rowset';
+import { specOf } from '@core/tables/specs';
 import { setKey, type Row, type RowSet } from '@core/tables/types';
 import { useApi } from '../state/names';
 import { useProjectEntities } from '../state/project-entities';
@@ -17,6 +18,8 @@ export interface RowSetState {
   rows: readonly Row[];
   /** Whether the project holds a changed copy */
   changed: boolean;
+  /** What is wrong with the rows as held, in a sentence each; empty while they are as the database has them */
+  issues: readonly string[];
   /** Holds these rows for the table and scope; a set left as the database has it is dropped */
   change(rows: Row[]): void;
 }
@@ -45,7 +48,9 @@ export function useRowSet(table: string, scope: Readonly<Record<string, string>>
 
   const set = findSet(project?.entities.rowsets, table, scope);
   const mine = read?.key === key ? read : null;
-  const original = set?.original ?? mine?.rows ?? [];
+  // Rows another editor owns (set 1 of equipment, the first model) are not this sheet's to show or write
+  const owns = specOf(table)?.own;
+  const original = set?.original ?? (owns ? (mine?.rows ?? []).filter(owns) : (mine?.rows ?? []));
   const rows = set?.rows ?? original;
   // The latest store, so two edits in a row do not write over each other
   // What the database holds must be known before a change is kept: the set remembers it to put it back
@@ -60,5 +65,6 @@ export function useRowSet(table: string, scope: Readonly<Record<string, string>>
     },
     [table],
   );
-  return { loading: Boolean(api) && !mine && !set, usable: project !== null && api !== null, exists: mine?.exists ?? true, columns: mine?.columns ?? [], rows, changed: set !== undefined, change };
+  const issues = set ? rowsetIssues([set]).map((i) => i.message.replace(/^[^:]*: /, '')) : [];
+  return { loading: Boolean(api) && !mine && !set, usable: project !== null && api !== null, exists: mine?.exists ?? true, columns: mine?.columns ?? [], rows, changed: set !== undefined, issues, change };
 }

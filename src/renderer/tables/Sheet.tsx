@@ -3,6 +3,7 @@ import type { Field, Row, RowSet, TableSpec } from '@core/tables/types';
 import { LOOT_SOURCE } from '@core/conditions/catalogue';
 import { ConditionsDetails } from './ConditionsEditor';
 import { SheetField } from './SheetField';
+import { TextPicker } from './TextPicker';
 import { useRowSet } from './useRowSet';
 import './sheets.css';
 
@@ -100,6 +101,7 @@ function LootRows({ idPrefix, spec, rows, columns, listId, owner, onRow, onRemov
 export function Sheet({ spec, scope, owner, idPrefix, title, context = {} }: { spec: TableSpec; scope: Readonly<Record<string, string>>; owner?: RowSet['owner']; idPrefix: string; title?: string; context?: Row }): React.JSX.Element {
   const set = useRowSet(spec.table, scope, owner);
   const rows = set.rows;
+  const problems = set.issues.length > 0 ? <ul className="sheet-issues" aria-label="Problems">{set.issues.map((m, i) => <li key={i}>{m}</li>)}</ul> : null;
   const heading = (
     <>
       <h4 className="scene-section__title">{title ?? spec.title}</h4>
@@ -112,6 +114,8 @@ export function Sheet({ spec, scope, owner, idPrefix, title, context = {} }: { s
 
   const blank = (list: readonly Row[]): Row => ({ ...spec.blank, ...spec.next?.(list), ...scope });
   const edit = (i: number, column: string, value: string | null): void => set.change(rows.map((r, j) => (j === i ? { ...r, ...scope, [column]: value } : r)));
+  const patch = (i: number, columns: Row): void => set.change(i < rows.length ? rows.map((r, j) => (j === i ? { ...r, ...scope, ...columns } : r)) : [{ ...spec.blank, ...scope, ...columns }]);
+  const pickers = (i: number): React.JSX.Element[] => (spec.pickText ?? []).map((p) => <TextPicker key={p.label} label={p.label} onPick={(picked) => patch(i, p.fill(picked))} />);
 
   if (!spec.multi) {
     const row = rows[0];
@@ -120,7 +124,9 @@ export function Sheet({ spec, scope, owner, idPrefix, title, context = {} }: { s
         {heading}
         <RowFields idPrefix={idPrefix} spec={spec} row={row ?? { ...spec.blank, ...scope }} columns={set.columns} context={context}
           onChange={(column, value) => set.change(row ? [{ ...row, ...scope, [column]: value }] : [{ ...spec.blank, ...scope, [column]: value }])} />
+        {pickers(0)}
         {row && !spec.overlay && <button type="button" className="btn sheet__clear" onClick={() => set.change([])}>Remove these settings</button>}
+        {problems}
         {set.changed && <p className="scene-hint">Changed in this project.</p>}
       </section>
     );
@@ -139,11 +145,13 @@ export function Sheet({ spec, scope, owner, idPrefix, title, context = {} }: { s
                 <button type="button" className="entry-card__btn entry-card__btn--danger" aria-label={`Remove ${spec.title} ${i + 1}`} onClick={() => set.change(rows.filter((_, j) => j !== i))}>Remove</button>
               </div>
               <RowFields idPrefix={`${idPrefix}-${i}`} spec={spec} row={row} columns={set.columns} context={context} onChange={(c, v) => edit(i, c, v)} />
+              {pickers(i)}
             </li>
           ))}
         </ol>
       )}
       <button type="button" className="btn" onClick={() => set.change([...rows, blank(rows)])}>{spec.loot ? 'Add item' : `Add ${spec.title.toLowerCase()}`}</button>
+      {problems}
       {set.changed && <p className="scene-hint">Changed in this project.</p>}
     </section>
   );

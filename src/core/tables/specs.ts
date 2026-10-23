@@ -3,7 +3,7 @@ import {
   CREATURE_FAMILIES, DYNAMIC_FLAGS, FLAGS_EXTRA, GAMEOBJECT_FLAGS, GOSSIP_EMOTES, LANGUAGES, LOOT_MODES, MOVEMENT_TYPES, SCHOOLS, STAND_STATES, TEXT_RANGES, TEXT_TYPES,
   TYPE_FLAGS, UNIT_CLASSES, UNIT_FLAGS, UNIT_FLAGS2, VIS_DISTANCES,
 } from './flags';
-import type { Field, FieldType, TableSpec } from './types';
+import type { Field, FieldType, Row, TableSpec } from './types';
 
 /**
  * Every table the editor opens as a sheet. Columns follow AzerothCore's world database; a column a fork
@@ -146,6 +146,18 @@ export const SPECS: readonly TableSpec[] = [
     ],
   },
   {
+    table: 'creature_template_model', title: 'More looks', blurb: 'Further models it can appear with, one picked at random by weight. The first model is the Look tab\'s.', owner: 'creature',
+    scope: ['CreatureID'], pk: ['CreatureID', 'Idx'], multi: true, own: (row) => Number(row.Idx ?? 0) >= 1,
+    fields: [int('Idx', 'Slot', { min: 1, max: 65535 }), int('CreatureDisplayID', 'Display id', { help: 'A creature display id; browse them in the Look tab.' }), float('DisplayScale', 'Scale'), float('Probability', 'Weight', { help: 'Models are picked by their share of the total weight.' })],
+    next: (rows) => ({ Idx: String(rows.reduce((m, r) => Math.max(m, Number(r.Idx) + 1), 1)), CreatureDisplayID: '0', DisplayScale: '1', Probability: '1' }),
+  },
+  {
+    table: 'creature_equip_template', title: 'More equipment sets', blurb: 'Other weapons it can carry, one set picked at random. Set 1 is the Look tab\'s.', owner: 'creature',
+    scope: ['CreatureID'], pk: ['CreatureID', 'ID'], multi: true, own: (row) => Number(row.ID ?? 1) >= 2,
+    fields: [int('ID', 'Set', { min: 2, max: 255 }), ref('ItemID1', 'Main hand', 'item'), ref('ItemID2', 'Off hand', 'item'), ref('ItemID3', 'Ranged', 'item')],
+    next: (rows) => ({ ID: String(rows.reduce((m, r) => Math.max(m, Number(r.ID) + 1), 2)), ItemID1: '0', ItemID2: '0', ItemID3: '0' }),
+  },
+  {
     table: 'creature_template_resistance', title: 'Resistances', blurb: 'How much of each magic school it resists.', owner: 'creature',
     scope: ['CreatureID'], pk: ['CreatureID', 'School'], multi: true,
     fields: [
@@ -198,6 +210,10 @@ export const SPECS: readonly TableSpec[] = [
       choice('TextRange', 'Heard within', TEXT_RANGES, { group: 'Advanced' }),
       text('comment', 'Note', { group: 'Advanced' }),
     ],
+    pickText: [{
+      label: 'Take a line the game has',
+      fill: (b) => ({ Text: b.MaleText || b.FemaleText || '', BroadcastTextId: b.ID ?? '0', Language: b.LanguageID ?? '0', Emote: b.EmoteID1 ?? '0', Sound: b.SoundEntriesId ?? '0' }),
+    }],
     next: (rows) => {
       const last = rows.at(-1);
       const group = last ? Number(last.GroupID) : 0;
@@ -268,6 +284,10 @@ export const SPECS: readonly TableSpec[] = [
   {
     table: 'npc_text', title: 'Gossip texts', blurb: 'What an NPC says when a player opens its window: up to 8 lines, one picked by weight.', owner: 'standalone',
     scope: ['ID'], pk: ['ID'], multi: false, search: ['text0_0', 'text0_1', 'text1_0', 'text2_0'], nameColumn: 'text0_0',
+    pickText: [0, 1].map((i) => ({
+      label: `Take line ${i + 1} from the game`,
+      fill: (b: Row): Row => ({ [`text${i}_0`]: b.MaleText || b.FemaleText || '', [`text${i}_1`]: b.FemaleText || b.MaleText || '', [`BroadcastTextID${i}`]: b.ID ?? '0', [`lang${i}`]: b.LanguageID ?? '0', [`Probability${i}`]: '1' }),
+    })),
     fields: Array.from({ length: 8 }, (_, i): Field[] => {
       const group = i < 2 ? `Line ${i + 1}` : 'Advanced';
       return [
@@ -298,6 +318,27 @@ export const SPECS: readonly TableSpec[] = [
     fields: [
       text('name', 'Name', { help: 'What a GM types after .tele' }), int('map', 'Map'),
       float('position_x', 'X'), float('position_y', 'Y'), float('position_z', 'Z'), float('orientation', 'Facing (radians)'),
+    ],
+  },
+  {
+    table: 'creature_addon', title: 'Spawn appearance and auras', blurb: 'The same as an NPC\'s appearance, for one placed spawn (by its guid). It wins over the NPC\'s own.', owner: 'standalone', existingOnly: true,
+    scope: ['guid'], pk: ['guid'], multi: false,
+    fields: [
+      part('bytes1', 'Stance', 0, 8, STAND_STATES), part('bytes1', 'Height', 24, 8, [[0, 'On the ground'], [1, 'Hovering'], [2, 'Flying'], [3, 'Underwater']]),
+      part('bytes2', 'Weapons', 0, 8, [[0, 'Sheathed'], [1, 'Melee drawn'], [2, 'Ranged drawn']]),
+      int('mount', 'Mount display', { zero: 'not mounted' }), int('emote', 'Looping emote', { zero: 'none' }), text('auras', 'Auras', { help: 'Spell ids separated by spaces.' }),
+      int('path_id', 'Waypoint path', { zero: 'none', help: 'Drawn in the World view; the path editor there is easier.' }),
+      choice('visibilityDistanceType', 'Seen from', VIS_DISTANCES, { group: 'Advanced' }), int('bytes1', 'Raw bytes 1', { group: 'Advanced' }), int('bytes2', 'Raw bytes 2', { group: 'Advanced' }),
+    ],
+  },
+  {
+    table: 'gameobject_addon', title: 'Object spawn extras', blurb: 'Who can see a placed object (by its guid) and how it is rotated inside its parent.', owner: 'standalone', existingOnly: true,
+    scope: ['guid'], pk: ['guid'], multi: false,
+    fields: [
+      choice('invisibilityType', 'Hidden by', [[0, 'Nothing: everyone sees it'], [1, 'General invisibility'], [2, 'Ghosts only'], [3, 'Drunk vision'], [4, 'Traps']]),
+      int('invisibilityValue', 'Detection needed', { help: 'How strong a detection must be to see it.' }),
+      float('parent_rotation0', 'Parent rotation X', { group: 'Advanced' }), float('parent_rotation1', 'Parent rotation Y', { group: 'Advanced' }),
+      float('parent_rotation2', 'Parent rotation Z', { group: 'Advanced' }), float('parent_rotation3', 'Parent rotation W', { group: 'Advanced' }),
     ],
   },
   {

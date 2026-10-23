@@ -3,6 +3,7 @@ import { EditorTabs, type EditorTab } from '../EditorTabs';
 import { LootList } from '../LootList';
 import { SpawnList } from '../SpawnList';
 import { ExistingLoot, type ExistingFacts } from '../existing-facts';
+import { describeObject } from '@core/entities/describe';
 import { ObjectDetails } from '../../tables/EntitySheets';
 import { ObjectBasics } from './ObjectBasics';
 import { ObjectLook } from './ObjectLook';
@@ -73,5 +74,10 @@ export function ObjectEditor({
       ),
     });
   }
-  return <EditorTabs label="Object" tab={tab} onTab={onTab} tabs={tabs} />;
+  return (
+    <>
+      <p className="entity-summary" aria-label="Summary">{describeObject(object)}</p>
+      <EditorTabs label="Object" tab={tab} onTab={onTab} tabs={tabs} />
+    </>
+  );
 }

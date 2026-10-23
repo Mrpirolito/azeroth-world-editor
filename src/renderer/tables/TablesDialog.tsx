@@ -13,8 +13,9 @@ const GROUPS: { title: string; tables: string[] }[] = [
   { title: 'Loot lists', tables: ['reference_loot_template', 'fishing_loot_template', 'mail_loot_template', 'spell_loot_template'] },
   { title: 'Texts', tables: ['broadcast_text', 'npc_text', 'page_text', 'acore_string'] },
   { title: 'World', tables: ['game_tele', 'creature_formations', 'creature_immunities', 'item_enchantment_template'] },
+  { title: 'Placed spawns', tables: ['creature_addon', 'gameobject_addon'] },
 ];
-const TOOLS = ['Free ids', 'SQL console'] as const;
+const TOOLS = ['Changed here', 'Free ids', 'SQL console'] as const;
 type Tool = (typeof TOOLS)[number];
 
 const short = (text: string | null | undefined, n = 60): string => {
@@ -62,9 +63,12 @@ function TableBrowser({ spec }: { spec: TableSpec }): React.JSX.Element {
           <input type="search" value={text} onChange={(e) => setText(e.target.value)} />
         </label>
         <button type="submit" className="btn" disabled={!api || text.trim() === ''}>Find</button>
-        <button type="button" className="btn" disabled={!api} onClick={() => void api?.freeIds(spec.table, idColumn, 1, 1).then((r) => { if (r.ok) setOpen(String(r.value.ids[0])); })}>
-          New with the first free id
-        </button>
+        {/^\d+$/.test(text.trim()) && <button type="button" className="btn" onClick={() => setOpen(text.trim())}>Open {idColumn} {text.trim()}</button>}
+        {!spec.existingOnly && (
+          <button type="button" className="btn" disabled={!api} onClick={() => void api?.freeIds(spec.table, idColumn, 1, 1).then((r) => { if (r.ok) setOpen(String(r.value.ids[0])); })}>
+            New with the first free id
+          </button>
+        )}
       </form>
       {problem && <p role="alert" className="control__alert">{problem}</p>}
       {found.length > 0 && (
@@ -85,6 +89,31 @@ function TableBrowser({ spec }: { spec: TableSpec }): React.JSX.Element {
         </div>
       )}
       {open !== null && <Sheet key={`${spec.table}:${open}`} spec={spec} scope={{ [idColumn]: open }} idPrefix={`tables-${spec.table}-${open}`} title={`${spec.title}: ${idColumn} ${open}`} />}
+    </>
+  );
+}
+
+/** Every set of rows the project holds, whoever owns it, each with a way to put it back as the database has it */
+function ChangedHere(): React.JSX.Element {
+  const project = useProjectEntities();
+  const sets = project?.entities.rowsets ?? [];
+  const drop = (at: number): void => project?.setEntities({ ...project.entities, rowsets: sets.filter((_, i) => i !== at) });
+  return (
+    <>
+      <p className="scene-hint">The table rows this project writes, from the sheets of NPCs, objects and items and from this dialog. Putting one back leaves the database&apos;s rows as they are.</p>
+      {sets.length === 0 ? <p className="scene-hint">Nothing is changed in any table yet.</p> : (
+        <ul className="tables-dialog__results" aria-label="Changed rows">
+          {sets.map((s, i) => {
+            const spec = SPECS.find((x) => x.table === s.table);
+            return (
+              <li key={`${s.table}:${JSON.stringify(s.scope)}`} className="scene-row">
+                <span>{spec?.title ?? s.table} · {Object.values(s.scope).join(' / ')}{s.owner ? ` · ${{ creature: 'NPC', gameobject: 'object', item: 'item' }[s.owner.kind]} ${s.owner.entry}` : ''} · {s.rows.length} {s.rows.length === 1 ? 'row' : 'rows'}</span>
+                <button type="button" className="btn" aria-label={`Put back ${spec?.title ?? s.table} ${Object.values(s.scope).join(' ')}`} onClick={() => drop(i)}>Put back</button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </>
   );
 }
@@ -213,6 +242,7 @@ export function TablesDialog({ onClose }: { onClose(): void }): React.JSX.Elemen
           <div className="tables-dialog__main" role="region" aria-label={spec?.title ?? tool}>
             <h3 className="scene-section__title">{spec?.title ?? tool}</h3>
             {spec && <TableBrowser spec={spec} />}
+            {tool === 'Changed here' && <ChangedHere />}
             {tool === 'Free ids' && <FreeIds />}
             {tool === 'SQL console' && <SqlConsole />}
           </div>

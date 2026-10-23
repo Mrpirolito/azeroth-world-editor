@@ -200,3 +200,16 @@
   font-style: italic;
   color: var(--text-muted);
 }
+
+.sheet-issues {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--danger, #d95a5a);
+}
+
+.text-picker {
+  padding: 6px 8px;
+  border: 1px dashed var(--border-soft);
+  border-radius: 6px;
+}

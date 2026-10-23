@@ -84,16 +84,16 @@ use the same pieces.
 |---|---|---|
 | creature_template | partial: name, levels, faction, rank, type, flags for gossip/quests/vendor/trainer, health and damage multipliers | covered: Traits tab (combat, movement, kind, flags, rewards, immunities set, advanced) |
 | creature_template_addon | missing | covered: Behaviour tab (stance, height, weapons, mount, emote, auras, path) |
-| creature_template_model | partial: first model only | partial: first model (Look tab); further models (`Idx` > 0) remain |
+| creature_template_model | partial: first model only | covered: Look tab (first model) and "More looks" (the others, by weight) |
 | creature_template_movement | missing | covered: Behaviour tab |
 | creature_template_resistance | missing | covered: Behaviour tab |
 | creature_template_spell | missing | covered: Behaviour tab |
-| creature_equip_template | partial: main hand, off hand, ranged of set 1 | partial: other equipment sets remain |
+| creature_equip_template | partial: main hand, off hand, ranged of set 1 | covered: Look tab (set 1) and "More equipment sets" |
 | creature_formations | missing | covered: Tables dialog (Spawns and groups) |
 | creature_onkill_reputation | missing | covered: Rewards tab |
 | creature_questitem | partial: through the quest drops panel | covered: Rewards tab |
 | creature_text | partial: written by scenes, read by SmartAI | covered: Texts tab |
-| creature spawn, spawn addon | spawns: covered in the World view; `creature_addon` of a spawn: partial (path only) | partial: spawn addon (mount, auras, stance of one spawn) remains |
+| creature spawn, spawn addon | spawns: covered in the World view; `creature_addon` of a spawn: partial (path only) | covered: spawns in the World view; `creature_addon` in the Tables dialog (Placed spawns) |
 | npc_vendor, trainer, default trainer | covered (Vendor, Trainer tabs) | covered |
 | creature_loot_template | covered (Loot tab) | covered |
 | pickpocketing_loot_template, skinning_loot_template | missing | covered: Rewards tab, shared loot sheet |
@@ -108,19 +108,21 @@ use the same pieces.
 | gameobject_template_addon | missing | covered: Details tab |
 | gameobject_loot_template | covered (chests) | covered |
 | gameobject_questitem | partial: quest drops panel | covered: Details tab |
-| gameobject spawn addon (`gameobject_addon`) | missing | missing: stays open |
-| item_template (stats, sockets, spells, flags) | covered: typed stats, damage, spells; every other column raw under Advanced | partial: flags and sockets as raw numbers; named toggles remain |
+| gameobject spawn addon (`gameobject_addon`) | missing | covered: Tables dialog (Placed spawns) |
+| item_template (stats, sockets, spells, flags) | covered: typed stats, damage, spells; every other column raw under Advanced | covered: Flags & sockets tab (named flags, who can use it, sockets, sets, wear); raw Advanced stays |
 | item_enchantment_template | missing | covered: Tables dialog |
 | item, disenchant, prospecting, milling loot | missing | covered: item tabs "Opens into" and "Breaks down into" |
 | reference, fishing, mail, spell loot | missing | covered: Tables dialog, same loot sheet |
-| broadcast_text, npc_text, page_text, acore_string | partial: npc_text and page_text through gossip and readable objects | covered: Tables dialog |
+| broadcast_text, npc_text, page_text, acore_string | partial: npc_text and page_text through gossip and readable objects | covered: Tables dialog; one text picker (`TextPicker`) takes a game line into creature text, gossip texts and gossip greetings |
 | gossip_menu, gossip_menu_option | covered (Gossip tab) | covered |
-| conditions | partial: quest conditions; gossip conditions read, never written | covered: shared condition builder (gossip, loot, quests, SmartAI) |
+| conditions | partial: quest conditions; gossip conditions read, never written | covered: one condition builder (`ConditionsEditor`) under gossip options, loot rows of every sheet, vendor items and SmartAI events; quest availability keeps its own registry editor |
 | game_tele | missing | covered: Tables dialog |
 | trainer | covered | covered |
 | creature_immunities | missing | covered: Tables dialog, and the Traits tab names the set |
 | unused guid / id search | partial: ids are allocated for new things | covered: Tools in the Tables dialog |
 | SQL console | missing | covered: read-only, enforced in the database layer (SELECT, SHOW, DESCRIBE, EXPLAIN; one statement; read-only transaction) |
+
+Still open after this branch: the creature loot and chest loot lists of the Loot tabs (the older list editor) have no condition button yet, the sheets do not show the SQL they will write, the MCP server has no tools for the new tables, and the quest chain view keeps its current form (prev/next/exclusive/breadcrumb links and groups already live in the quests dock graph).
 
 ## Phase 4 - DBC/MPQ editor and spell editor
 

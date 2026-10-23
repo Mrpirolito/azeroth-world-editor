@@ -19,9 +19,9 @@ export interface ConditionDef {
 const p = (label: string, kind: ParamDef['kind'], more: Partial<ParamDef> = {}): ParamDef => ({ label, kind, ...more });
 const bits = (list: readonly (readonly [number, string])[]): Bit[] => list.map(([n, label]) => ({ value: 2 ** n, label }));
 const COMPARISON: readonly Choice[] = [[0, 'exactly'], [1, 'more than'], [2, 'less than'], [3, 'at least'], [4, 'at most']];
-const RANKS = bits([[0, 'Hated'], [1, 'Hostile'], [2, 'Unfriendly'], [3, 'Neutral'], [4, 'Friendly'], [5, 'Honored'], [6, 'Revered'], [7, 'Exalted']]);
-const CLASSES = bits([[0, 'Warrior'], [1, 'Paladin'], [2, 'Hunter'], [3, 'Rogue'], [4, 'Priest'], [5, 'Death Knight'], [6, 'Shaman'], [7, 'Mage'], [8, 'Warlock'], [10, 'Druid']]);
-const RACES = bits([[0, 'Human'], [1, 'Orc'], [2, 'Dwarf'], [3, 'Night elf'], [4, 'Undead'], [5, 'Tauren'], [6, 'Gnome'], [7, 'Troll'], [9, 'Blood elf'], [10, 'Draenei']]);
+export const RANKS = bits([[0, 'Hated'], [1, 'Hostile'], [2, 'Unfriendly'], [3, 'Neutral'], [4, 'Friendly'], [5, 'Honored'], [6, 'Revered'], [7, 'Exalted']]);
+export const CLASSES = bits([[0, 'Warrior'], [1, 'Paladin'], [2, 'Hunter'], [3, 'Rogue'], [4, 'Priest'], [5, 'Death Knight'], [6, 'Shaman'], [7, 'Mage'], [8, 'Warlock'], [10, 'Druid']]);
+export const RACES = bits([[0, 'Human'], [1, 'Orc'], [2, 'Dwarf'], [3, 'Night elf'], [4, 'Undead'], [5, 'Tauren'], [6, 'Gnome'], [7, 'Troll'], [9, 'Blood elf'], [10, 'Draenei']]);
 const QUEST_STATES = bits([[0, 'Not taken'], [1, 'Complete'], [3, 'In progress'], [5, 'Failed'], [6, 'Rewarded']]);
 const TYPE_MASK = bits([[3, 'Creature'], [4, 'Player'], [5, 'Game object'], [7, 'Corpse']]);
 const RELATIONS: readonly Choice[] = [[0, 'self'], [1, 'in its party'], [2, 'in its raid'], [3, 'its owner'], [4, 'its passenger'], [5, 'its creator']];

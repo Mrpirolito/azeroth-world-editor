@@ -7,6 +7,8 @@ import { ItemAdvanced } from './ItemAdvanced';
 import { ItemBasics } from './ItemBasics';
 import { ItemGear } from './ItemGear';
 import { ItemSpells } from './ItemSpells';
+import { describeItem } from '@core/entities/describe';
+import { ItemProperties } from '../../tables/ItemProperties';
 import { ItemBreakdown, ItemContents } from '../../tables/EntitySheets';
 import type { ExistingFacts } from '../existing-facts';
 import '../../scripts/scripts.css';
@@ -72,11 +74,13 @@ export function ItemEditor({
       ),
     },
   ];
+  tabs.push({ id: 'properties', label: 'Flags & sockets', render: () => <ItemProperties item={item} onChange={onChange} columns={columns} /> });
   tabs.push({ id: 'contents', label: 'Opens into', render: () => <ItemContents item={item} /> });
   tabs.push({ id: 'breakdown', label: 'Breaks down into', render: () => <ItemBreakdown item={item} onChange={onChange} /> });
   if (showAdvanced) tabs.push({ id: 'advanced', label: 'Advanced', render: () => <ItemAdvanced item={item} onChange={onChange} columns={columns} /> });
   return (
     <>
+      <p className="entity-summary" aria-label="Summary">{describeItem(item)}</p>
       <EditorTabs label="Item" tab={tab} onTab={onTab} tabs={tabs} />
       <label className="scene-field scene-field--check">
         <input type="checkbox" checked={showAdvanced} onChange={(e) => toggle(e.target.checked)} />

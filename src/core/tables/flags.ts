@@ -1,7 +1,7 @@
 import type { Bit, Choice } from '../smartai/types';
 
 /** Named bits from `[bit position, label, help?]`; the top bit (31) is left out, as no editor can hold it as a signed number */
-const bits = (list: readonly (readonly [number, string, string?])[]): Bit[] =>
+export const bits = (list: readonly (readonly [number, string, string?])[]): Bit[] =>
   list.filter(([n]) => n < 31).map(([n, label, help]) => ({ value: 2 ** n, label, ...(help ? { help } : {}) }));
 
 export const UNIT_FLAGS = bits([

@@ -5,6 +5,7 @@ import { CheckField, NumberField } from '../../scripts/fields';
 import { useApi } from '../../state/names';
 import { ModelPreview } from '../../world3d/ModelPreview';
 import { LookLine } from '../LookLine';
+import { NpcMoreLooks } from '../../tables/EntitySheets';
 
 const NO_WEAPONS = { mainHand: 0, offHand: 0, ranged: 0 };
 
@@ -84,6 +85,7 @@ export function NpcLook({ npc, onChange, others = [], hasServerData = true }: {
       {weapon('mainHand', 'Main hand')}
       {weapon('offHand', 'Off hand')}
       {weapon('ranged', 'Ranged')}
+      <NpcMoreLooks npc={npc} />
     </div>
   );
 }

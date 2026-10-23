@@ -4,6 +4,7 @@ import { GOSSIP_SERVICES, serviceFlagBits, serviceLabel, serviceOf } from '@core
 import { NumberField, SelectField, TextField } from '../scripts/fields';
 import { GOSSIP_OPTION_SOURCE } from '@core/conditions/catalogue';
 import { ConditionsDetails } from '../tables/ConditionsEditor';
+import { TextPicker } from '../tables/TextPicker';
 
 const MAX_VARIANTS = 8;
 const NEW_MENU = '__new';
@@ -104,6 +105,7 @@ export function GossipMenuEditor({
             <TextField label="Text" long value={v.text} onChange={(text) => setVariant(i, { ...v, text })} />
             <TextField label="Female text" long value={v.textFemale} onChange={(textFemale) => setVariant(i, { ...v, textFemale })} />
             <NumberField label="Chance" value={v.probability} min={0} onChange={(probability) => setVariant(i, { ...v, probability: Math.max(0, probability) })} />
+            <TextPicker onPick={(b) => setVariant(i, { ...v, text: b.MaleText || b.FemaleText || '', textFemale: b.FemaleText || b.MaleText || '' })} />
             {menu.greeting.length > 1 && (
               <button type="button" className="entry-card__btn entry-card__btn--danger" onClick={() => onChange(setMenu({ ...menu, greeting: menu.greeting.filter((_, j) => j !== i) }))}>
                 Remove variant

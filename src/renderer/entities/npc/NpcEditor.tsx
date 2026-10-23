@@ -14,6 +14,7 @@ import { ScriptsTab } from '../ScriptsTab';
 import { TrainerTab } from '../TrainerTab';
 import { VendorList } from '../VendorList';
 import { SpawnList } from '../SpawnList';
+import { describeNpc } from '@core/entities/describe';
 import { NpcBehaviour, NpcRewards, NpcTexts, NpcTraits } from '../../tables/EntitySheets';
 import { NpcBasics } from './NpcBasics';
 import { NpcLook } from './NpcLook';
@@ -132,5 +133,10 @@ export function NpcEditor({
       ),
     });
   }
-  return <EditorTabs label="NPC" tab={tab} onTab={onTab} tabs={tabs} />;
+  return (
+    <>
+      <p className="entity-summary" aria-label="Summary">{describeNpc(npc)}</p>
+      <EditorTabs label="NPC" tab={tab} onTab={onTab} tabs={tabs} />
+    </>
+  );
 }

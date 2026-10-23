@@ -64,6 +64,12 @@ export interface TableSpec {
   blank?: Row;
   /** The next new row, given the rows held; the columns of the scope are filled in after */
   next?(rows: readonly Row[]): Row;
+  /** Buttons that take a line from the game's broadcast texts and set the columns it fills (all rows of the sheet, each its own) */
+  pickText?: readonly { label: string; fill(picked: Row): Row }[];
+  /** The rows this sheet owns: others under the same scope belong to another editor and are neither shown nor written */
+  own?(row: Row): boolean;
+  /** Rows are made for something that already exists (a spawn's guid), not for a new id */
+  existingOnly?: boolean;
   /** For a loot table of an owner: the template column that holds the loot id, which is the owner's entry when it is 0 */
   via?: { table: string; column: string };
 }

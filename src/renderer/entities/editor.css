@@ -52,3 +52,12 @@
 .entity-row__name {
   font-weight: 600;
 }
+
+.entity-summary {
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-panel-raised);
+  border-radius: 4px;
+  font-size: 13px;
+}

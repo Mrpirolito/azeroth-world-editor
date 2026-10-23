@@ -37,7 +37,7 @@ describe('Database tables dialog', () => {
     store = EMPTY_ENTITIES;
     render(<Dialog api={mockApi()} />);
     const buttons = within(screen.getByRole('navigation', { name: 'Tables' })).getAllByRole('button').map((b) => b.textContent);
-    expect(buttons).toEqual(['Reference loot lists', 'Fishing loot', 'Mail loot', 'Spell loot', 'Broadcast texts', 'Gossip texts', 'Book pages', 'Server strings', 'Teleport places', 'Formations', 'Immunity sets', 'Random enchantments', 'Free ids', 'SQL console']);
+    expect(buttons).toEqual(['Reference loot lists', 'Fishing loot', 'Mail loot', 'Spell loot', 'Broadcast texts', 'Gossip texts', 'Book pages', 'Server strings', 'Teleport places', 'Formations', 'Immunity sets', 'Random enchantments', 'Spawn appearance and auras', 'Object spawn extras', 'Changed here', 'Free ids', 'SQL console']);
     expect(screen.getByRole('heading', { name: 'Reference loot lists' })).toBeTruthy();
   });
 
@@ -68,6 +68,16 @@ describe('Database tables dialog', () => {
     expect(store.rowsets![0]).toMatchObject({ table: 'game_tele', scope: { id: '3' }, original: [], rows: [expect.objectContaining({ id: '3', name: 'Ironforge' })] });
   });
 
+  it('opens a placed spawn by its guid, and does not offer a new id for what must already exist', async () => {
+    store = EMPTY_ENTITIES;
+    render(<Dialog api={mockApi()} />);
+    await nav('Spawn appearance and auras');
+    expect(screen.queryByRole('button', { name: 'New with the first free id' })).toBeNull();
+    await userEvent.type(screen.getByLabelText(/Find by id/), '51234');
+    await userEvent.click(screen.getByRole('button', { name: 'Open guid 51234' }));
+    expect(await screen.findByRole('region', { name: 'Spawn appearance and auras: guid 51234' })).toBeTruthy();
+  });
+
   it('edits a reference loot list with the loot sheet', async () => {
     store = EMPTY_ENTITIES;
     render(<Dialog api={mockApi({ freeIds: vi.fn(async () => okv({ ids: [200] })) })} />);
@@ -76,6 +86,22 @@ describe('Database tables dialog', () => {
     await userEvent.click(within(sheet).getByRole('button', { name: 'Add item' }));
     expect(store.rowsets![0]).toMatchObject({ table: 'reference_loot_template', scope: { Entry: '200' } });
     expect(store.rowsets![0]!.rows[0]).toMatchObject({ Entry: '200', Chance: '100', MinCount: '1' });
+  });
+
+  it('lists every set of rows the project holds, and puts one back', async () => {
+    store = { ...EMPTY_ENTITIES, rowsets: [
+      { table: 'creature_template_addon', scope: { entry: '5' }, original: [], rows: [{ entry: '5', emote: '1' }], owner: { kind: 'creature', entry: 5 } },
+      { table: 'game_tele', scope: { id: '9' }, original: [], rows: [{ id: '9', name: 'Here' }, ] },
+    ] };
+    render(<Dialog api={mockApi()} />);
+    await nav('Changed here');
+    const list = screen.getByRole('list', { name: 'Changed rows' });
+    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Appearance and auras · 5 · NPC 5 · 1 rowPut back', 'Teleport places · 9 · 1 rowPut back',
+    ]);
+    await userEvent.click(within(list).getByRole('button', { name: 'Put back Appearance and auras 5' }));
+    expect(store.rowsets!.map((s) => s.table)).toEqual(['game_tele']);
+    store = EMPTY_ENTITIES;
   });
 
   it('lists free ids for what the author is making', async () => {
