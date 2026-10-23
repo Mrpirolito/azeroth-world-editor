@@ -15,6 +15,7 @@ export function AppBar({
   onOpenProject,
   onOpenSettings,
   onOpenTables,
+  onOpenSpells,
 }: {
   store: AppStore;
   /** Whether the quest chain's dock shows under or beside the world */
@@ -24,6 +25,7 @@ export function AppBar({
   onOpenSettings(): void;
   /** Opens the database tables dialog (loot lists, texts, teleports, tools) */
   onOpenTables?(): void;
+  onOpenSpells?(): void;
 }): React.JSX.Element {
   const projectName = store((s) => s.project.name);
   const dirty = store((s) => s.project.dirty);
@@ -68,6 +70,14 @@ export function AppBar({
               <path d="M2.5 6.5h11M2.5 9.5h11M6.5 3.5v9" />
             </svg>
             <span className="app-bar__quests-label">Tables</span>
+          </button>
+        )}
+        {onOpenSpells && (
+          <button type="button" className="btn app-bar__quests" onClick={onOpenSpells}>
+            <svg className="app-bar__icon" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 1.5l1.7 4.3 4.3.2-3.4 2.7 1.2 4.3L8 10.6l-3.8 2.4 1.2-4.3L2 6l4.3-.2z" />
+            </svg>
+            <span className="app-bar__quests-label">Spells</span>
           </button>
         )}
         <HistoryButtons store={store} />

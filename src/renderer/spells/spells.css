@@ -1,0 +1,197 @@
+.spells-dialog {
+  width: min(1280px, 96vw);
+}
+
+.spell-editor {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.spell-editor__side,
+.spell-editor__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spell-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 340px;
+  overflow: auto;
+}
+
+.spell-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  text-align: left;
+  color: var(--text);
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.spell-row:hover,
+.spell-row--on {
+  border-color: var(--accent);
+}
+
+.spell-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spell-row__id {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.spell-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.spell-badge--new {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.spell-icon {
+  display: inline-block;
+  flex: none;
+  border-radius: 4px;
+  image-rendering: pixelated;
+}
+
+.spell-icon--none {
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spell-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.spell-form__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.spell-form__title {
+  flex: 1;
+  min-width: 180px;
+}
+
+.spell-form__title h3 {
+  margin: 0;
+}
+
+.spell-form__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.spell-issue--error {
+  color: var(--red-text);
+}
+
+.spell-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spell-effect {
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-panel-raised);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spell-effect__sentence {
+  margin: 0;
+  color: var(--accent-strong);
+}
+
+.spell-icon-picker__current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spell-icon-picker__grid {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 44px);
+  gap: 6px;
+}
+
+.spell-icon-picker__item {
+  padding: 3px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.spell-icon-picker__item:hover {
+  border-color: var(--accent);
+}
+
+.spell-raw {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.spell-browser,
+.spell-export {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spell-export__done {
+  padding: 10px 12px;
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .spell-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

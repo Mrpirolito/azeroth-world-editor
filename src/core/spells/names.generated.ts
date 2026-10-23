@@ -165,7 +165,6 @@ export const EFFECT_NAMES: readonly (readonly [number, string])[] = [
   [163, "163"],
   [164, "Remove aura"],
   [165, "Ascension first"],
-  [165, "Ascension modify cooldown"],
   [166, "Ascension restore base mana pct"],
   [168, "Ascension play spell visual kit"],
   [169, "Ascension spread aura"],
