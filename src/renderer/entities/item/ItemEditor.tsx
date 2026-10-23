@@ -7,6 +7,7 @@ import { ItemAdvanced } from './ItemAdvanced';
 import { ItemBasics } from './ItemBasics';
 import { ItemGear } from './ItemGear';
 import { ItemSpells } from './ItemSpells';
+import { ItemBreakdown, ItemContents } from '../../tables/EntitySheets';
 import type { ExistingFacts } from '../existing-facts';
 import '../../scripts/scripts.css';
 
@@ -71,6 +72,8 @@ export function ItemEditor({
       ),
     },
   ];
+  tabs.push({ id: 'contents', label: 'Opens into', render: () => <ItemContents item={item} /> });
+  tabs.push({ id: 'breakdown', label: 'Breaks down into', render: () => <ItemBreakdown item={item} onChange={onChange} /> });
   if (showAdvanced) tabs.push({ id: 'advanced', label: 'Advanced', render: () => <ItemAdvanced item={item} onChange={onChange} columns={columns} /> });
   return (
     <>

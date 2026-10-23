@@ -11,7 +11,7 @@ import { readScenes } from '../../core/scripts/model';
 import { sceneIssues } from '../../core/scripts/validate';
 import { scenesLocked } from '../../core/scripts/npc-scenes';
 import { objectivesOf, questItemsOf, relationOwners } from '../../core/entities/links';
-import type { ProjectEntities } from '../../core/entities/model';
+import { storeSize, type ProjectEntities } from '../../core/entities/model';
 import { entityIssues } from '../../core/entities/validate';
 import type { ProjectQuest } from '../project/project-file';
 import type { ApiContext } from './context';
@@ -65,7 +65,7 @@ export function createChecks(ctx: ApiContext, files: ServerFiles) {
   }
 
   async function newEntityIssues(live: Session, entities: ProjectEntities): Promise<Issue[]> {
-    if (entities.npcs.length + entities.objects.length + entities.items.length === 0) return [];
+    if (storeSize(entities) === 0) return [];
     // The quests items start and NPC scenes are about
     const startedQuests = [...new Set([...entities.items.map((i) => i.startsQuest), ...entities.npcs.flatMap((n) => n.scenes.map((sc) => sc.questId))].filter((q) => q > 0))];
     const [creatures, objects, itemRows, questRows] = await Promise.all([

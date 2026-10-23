@@ -1,6 +1,7 @@
 import mysql from 'mysql2/promise';
 import type { Pool, Field } from 'mysql2/promise';
 import { ident } from '../sql/render';
+import { limitedSql, NotReadOnlyError, readOnlySql, SQL_ROW_LIMIT, SqlQueryError, type SqlResult } from './read-only-sql';
 import type { ColumnInfo, RawRow, RawValue, RefKind, Where } from './types';
 import { isNumericColumn } from './types';
 import { ENTITY_TABLES, ID_TEXT, toHit, type DbSearchKind, type EntityHit } from './entity-search';
@@ -167,6 +168,8 @@ class MysqlWorldDb implements WorldDb {
     try {
       return await fn();
     } catch (err) {
+      // The console's own refusals say what is wrong in their own words
+      if (err instanceof SqlQueryError || err instanceof NotReadOnlyError) throw err;
       classifyMysqlError(this.host, this.port, err, context);
     }
   }
@@ -304,6 +307,48 @@ class MysqlWorldDb implements WorldDb {
       return result as RawRow[];
     });
     return rows.map((r) => ({ ...r }));
+  }
+
+  async searchText(table: string, columns: readonly string[], text: string, limit: number): Promise<RawRow[]> {
+    const cols = await this.knownColumns(table);
+    await this.checkColumns(table, cols, columns);
+    if (columns.length === 0) return [];
+    const keyCols = cols.filter((c) => c.isKey);
+    const orderBy = keyCols.length > 0 ? ` ORDER BY ${keyCols.map((c) => ident(c.name)).join(', ')}` : '';
+    const sql = `SELECT * FROM ${ident(table)} WHERE ${columns.map((c) => `${ident(c)} LIKE ? ESCAPE '\\'`).join(' OR ')}${orderBy} LIMIT ${Math.max(0, Math.trunc(limit))}`;
+    const rows = await this.run(`searching ${table}`, async () => {
+      const [result] = await this.pool.query(sql, columns.map(() => `%${escapeLike(text)}%`));
+      return result as RawRow[];
+    });
+    return rows.map((r) => ({ ...r }));
+  }
+
+  async selectRaw(statement: string): Promise<SqlResult> {
+    const sql = limitedSql(readOnlySql(statement));
+    return this.run('running a query', async () => {
+      const conn = await this.pool.getConnection();
+      try {
+        await conn.query('START TRANSACTION READ ONLY');
+        try {
+          const [result, fields] = await conn.query({ sql, timeout: 10_000 });
+          const rows = (Array.isArray(result) ? (result as Record<string, string | null>[]) : []).map((r) => ({ ...r }));
+          return {
+            columns: Array.isArray(fields) ? (fields as { name: string }[]).map((f) => f.name) : Object.keys(rows[0] ?? {}),
+            rows: rows.slice(0, SQL_ROW_LIMIT),
+            truncated: rows.length > SQL_ROW_LIMIT,
+          };
+        } catch (err) {
+          // The database's own words (a column that is not there, a typo) are what the author needs
+          const message = (err as { sqlMessage?: string }).sqlMessage;
+          if (message) throw new SqlQueryError(message);
+          throw err;
+        } finally {
+          await conn.query('ROLLBACK').catch(() => undefined);
+        }
+      } finally {
+        conn.release();
+      }
+    });
   }
 
   async selectMax(table: string, column: string, below?: number): Promise<number | null> {

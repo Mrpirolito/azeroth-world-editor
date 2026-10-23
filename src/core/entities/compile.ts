@@ -10,6 +10,7 @@ import { seenByColumns } from './visibility';
 import { serviceFlagBits } from '../game/gossip-services';
 import { SMART_AI_NAME } from '../smartai/lock';
 import { numberOf as smartNumber, type SmartRow } from '../smartai/row';
+import { overlayColumns } from '../tables/rowset';
 
 /**
  * New NPCs and objects to template and spawn rows, in the same shape as compiled scripts so one
@@ -19,6 +20,9 @@ import { numberOf as smartNumber, type SmartRow } from '../smartai/row';
  */
 
 type Row = Record<string, string>;
+
+/** A sheet's columns as the compiled rows hold them: a column left NULL is not written, so the table's default stands */
+const definedOnly = (row: Record<string, string | null>): Row => Object.fromEntries(Object.entries(row).filter((e): e is [string, string] => e[1] !== null));
 
 const GOSSIP_BIT = 1;
 const QUEST_GIVER_BIT = 2;
@@ -182,6 +186,8 @@ export function compileEntities(input: {
       gossip_menu_id: npc.gossipMenu ? text(npc.gossipMenu.menus[0]!.menuId) : removable(num(existing?.gossip_menu_id)) ? '0' : (existing?.gossip_menu_id ?? '0'),
       // Creature loot is looked up by `lootid`; the NPC's own entry keeps its loot rows its own.
       ...(lootWritten > 0 ? { lootid: text(npc.entry) } : {}),
+      // What the Traits tab set on its template row
+      ...definedOnly(overlayColumns(entities.rowsets, 'creature_template', npc.entry)),
     });
     insert('creature_template_model', {
       CreatureID: text(npc.entry), Idx: '0', CreatureDisplayID: text(npc.displayId), DisplayScale: text(npc.scale), Probability: '1',
@@ -267,6 +273,7 @@ export function compileEntities(input: {
     // Only players with the quest in their log may use it (goober `Data1`) or loot it (chest `Data8`).
     if (object.onlyDuringQuest !== null && object.type === 'goober') row.Data1 = text(object.onlyDuringQuest);
     if (object.onlyDuringQuest !== null && object.type === 'chest') row.Data8 = text(object.onlyDuringQuest);
+    Object.assign(row, definedOnly(overlayColumns(entities.rowsets, 'gameobject_template', object.entry)));
     insert('gameobject_template', row);
     if (object.type === 'chest') writeLoot('gameobject_loot_template', object.entry, object.loot, `Object "${object.name || object.entry}"`);
     else if (object.loot.length > 0) out.warnings.push(`Object "${object.name || object.entry}": only a chest can be looted, so its loot list is not written.`);

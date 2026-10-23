@@ -2,6 +2,7 @@ import type { ColumnInfo, RawRow, RefKind, Where } from './types';
 import type { DbSearchKind, EntityHit } from './entity-search';
 import type { MapBox, SpawnDot, SpawnKind } from './spawns';
 import type { ViewCreature, ViewObject } from './view-spawns';
+import type { SqlResult } from './read-only-sql';
 
 export type { DbSearchKind, EntityHit, SearchKind } from './entity-search';
 
@@ -68,6 +69,16 @@ export interface WorldDb {
    * keeps a stray id at the top of its range). Throws `UnknownTableError` / `UnknownColumnError`.
    */
   selectMax?(table: string, column: string, below?: number): Promise<number | null>;
+  /**
+   * Rows of a table where any of the text `columns` contains `text`, case-insensitively, in `selectRows`' order and shape, at
+   * most `limit`. Optional: without it a table cannot be searched by its words. Throws `UnknownTableError` / `UnknownColumnError`.
+   */
+  searchText?(table: string, columns: readonly string[], text: string, limit: number): Promise<RawRow[]>;
+  /**
+   * Runs one query that only reads (`readOnlySql` decides, and throws `NotReadOnlyError` for anything else), in a read-only
+   * transaction, giving at most `SQL_ROW_LIMIT` rows. Optional: the SQL console is off without it. Throws `SqlQueryError` when the database refuses it.
+   */
+  selectRaw?(sql: string): Promise<SqlResult>;
   /**
    * Creatures and objects on a map inside a box for the 3D view, each kind ordered by guid and at most
    * `limit`: with facing, display, scale, wander, patrol route and held items.

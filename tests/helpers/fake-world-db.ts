@@ -153,6 +153,12 @@ export class FakeWorldDb implements WorldDb {
     return values.length === 0 ? null : Math.max(...values);
   }
 
+  async searchText(table: string, columns: readonly string[], text: string, limit: number): Promise<RawRow[]> {
+    this.checkColumns(table, this.table(table), columns);
+    const needle = text.toLowerCase();
+    return (await this.selectRows(table, {})).filter((row) => columns.some((c) => (row[c] ?? '').toLowerCase().includes(needle))).slice(0, limit);
+  }
+
   async selectNonZero(table: string, column: string): Promise<RawRow[]> {
     this.checkColumns(table, this.table(table), [column]);
     return (await this.selectRows(table, {})).filter((row) => row[column] !== null && Number(row[column]) !== 0);

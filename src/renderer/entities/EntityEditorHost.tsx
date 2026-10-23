@@ -14,6 +14,7 @@ import type { ExistingFacts } from './existing-facts';
 import { aboveHeld, heldIds } from './alloc-floor';
 import { ObjectEditor } from './object/ObjectEditor';
 import { stillNeeds } from './still-needs';
+import { withoutOwner } from '@core/tables/rowset';
 
 /** Which entity the editor shows, whether it was just made, and the tab it is on. */
 export interface EditorState {
@@ -126,8 +127,11 @@ export function EntityEditorHost({
     return result?.ok && result.value ? (result.value as Partial<CustomItem>) : null;
   }
 
-  const withoutIt = (): ProjectEntities =>
-    ({ ...entities, [useKey]: (entities[useKey] as { entry: number }[]).filter((e) => e.entry !== state.entry) }) as ProjectEntities;
+  const withoutIt = (): ProjectEntities => {
+    // The rows of its sheets (loot, texts...) leave with it
+    const rowsets = withoutOwner(entities.rowsets, { npc: 'creature', object: 'gameobject', item: 'item' }[state.kind] as 'creature', state.entry);
+    return { ...entities, [useKey]: (entities[useKey] as { entry: number }[]).filter((e) => e.entry !== state.entry), ...(rowsets.length > 0 ? { rowsets } : { rowsets: undefined }) } as ProjectEntities;
+  };
 
   function putBack(): void {
     const name = entity!.name.trim() || `this ${word}`;

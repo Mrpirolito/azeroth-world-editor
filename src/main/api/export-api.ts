@@ -11,6 +11,7 @@ import { readScenes } from '../../core/scripts/model';
 import { ENTITY_KEYS, ENTITY_TABLES } from '../../core/entities/context';
 import { relationOwners } from '../../core/entities/links';
 import { existingDrift } from '../../core/entities/existing';
+import { storeSize } from '../../core/entities/model';
 import { gmCommands } from '../../core/testing/gm';
 import type { ExportApi } from '../../shared/ipc';
 import type { Services } from './services';
@@ -104,8 +105,8 @@ export function createExportApi(s: Services): ExportApi {
         const live = connected();
         const store = projectEntities();
         const layer: WorldLayer = deps.session.world.get();
-        if (store.npcs.length + store.objects.length + store.items.length === 0 && !hasWorldChanges(layer)) {
-          throw fail('BAD_REQUEST', 'There are no NPCs, objects, items or world changes to export.');
+        if (storeSize(store) === 0 && !hasWorldChanges(layer)) {
+          throw fail('BAD_REQUEST', 'There are no NPCs, objects, items, table rows or world changes to export.');
         }
         await guardProject(live);
         const { apply, revert, schema, lootWarnings, eventWarnings } = await projectPatch(live);
@@ -186,7 +187,7 @@ export function createExportApi(s: Services): ExportApi {
 
         // What Apply to dev runs before this quest; none when the project has nothing of its own
         const store = projectEntities();
-        const hasProject = store.npcs.length + store.objects.length + store.items.length > 0 || hasWorldChanges(deps.session.world.get());
+        const hasProject = storeSize(store) > 0 || hasWorldChanges(deps.session.world.get());
         let projectSql: string | null = null;
         if (hasProject) {
           const project = await projectPatch(live);

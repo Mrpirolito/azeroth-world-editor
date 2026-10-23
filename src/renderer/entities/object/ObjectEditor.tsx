@@ -3,6 +3,7 @@ import { EditorTabs, type EditorTab } from '../EditorTabs';
 import { LootList } from '../LootList';
 import { SpawnList } from '../SpawnList';
 import { ExistingLoot, type ExistingFacts } from '../existing-facts';
+import { ObjectDetails } from '../../tables/EntitySheets';
 import { ObjectBasics } from './ObjectBasics';
 import { ObjectLook } from './ObjectLook';
 import { ObjectScripts } from './ObjectScripts';
@@ -60,6 +61,7 @@ export function ObjectEditor({
       ),
     });
   }
+  tabs.push({ id: 'details', label: 'Details', render: () => <ObjectDetails object={object} /> });
   tabs.push({ id: 'scripts', label: 'Scripts', render: () => <ObjectScripts object={object} onChange={onChange} /> });
   if (!existing) {
     tabs.push({

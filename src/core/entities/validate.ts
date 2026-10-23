@@ -8,6 +8,7 @@ import { npcSceneIssues } from '../scripts/npc-validate';
 import { SMART_ROWS_KEY, smartUnread } from '../smartai/lock';
 import { numberOf, sameRowSets, type SmartRow } from '../smartai/row';
 import { validateRows } from '../smartai/validate';
+import { rowsetIssues } from '../tables/rowset';
 
 /**
  * Inventory types the server lets an NPC hold (`ObjectMgr::LoadEquipmentTemplates`): weapon, shield,
@@ -371,5 +372,9 @@ export function entityIssues(input: {
   for (const npc of input.entities.npcs) check('creature', npc);
   for (const object of input.entities.objects) check('gameobject', object);
   for (const item of input.entities.items ?? []) checkItem(item);
+  // The rows of the sheets (loot, addons, texts): ranges, keys and ids that lead nowhere
+  issues.push(...rowsetIssues(input.entities.rowsets, {
+    exists: (kind, id) => (kind === 'item' ? (input.knownItem?.(id) ?? true) : kind === 'quest' ? (input.knownQuest?.(id) ?? true) : kind === 'spell' ? (input.knownSpell?.(id) ?? true) : true),
+  }));
   return issues;
 }

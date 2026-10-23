@@ -150,7 +150,7 @@ describe('the world layer through the API', () => {
 
   it('exports world changes in the project patch and its revert, numbered per day', async () => {
     const { api, written } = await setup(world);
-    expect(((await api.exportProject()) as any).error.message).toBe('There are no NPCs, objects, items or world changes to export.');
+    expect(((await api.exportProject()) as any).error.message).toBe('There are no NPCs, objects, items, table rows or world changes to export.');
     await api.worldMoveSpawn('creature', 80330, to(-9470));
     const out: any = await api.exportProject();
     expect(out.value.applyPath).toMatch(/rev_20261003_01_.*\.sql$/);

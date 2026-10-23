@@ -23,10 +23,12 @@ import { ENTITY_KEYS, readEntityContext } from '../../core/entities/context';
 import { objectivesOf, questItemsOf, relationOwners } from '../../core/entities/links';
 import { existingStatements, newLootIds } from '../../core/entities/existing';
 import { newOnly } from '../../core/entities/model';
+import { rowsetStatements } from '../../core/tables/rowset';
 import { spawnEventPlan, spawnEventStatements } from '../../core/entities/spawn-events';
 import { npcSpawnGuids, spawnEventRows, spawnEventWarnings } from '../../core/entities/spawn-events-read';
 import type { ProjectQuest } from '../project/project-file';
 import type { ApiContext } from './context';
+import { fail } from './errors';
 import type { Session } from './connection';
 
 export const KEY_COLUMNS = keyColumnsByTable(registry);
@@ -108,7 +110,13 @@ export function createPatches(ctx: ApiContext) {
     const all = quests.list();
     const ws = await worldSchema(live.db, live.schema.hash);
     const base = exportSchema(live);
-    const schema: SchemaInfo = { ...base, tables: { ...ws.tables, ...base.tables } };
+    // The tables the sheets write rows of; a database without one cannot take them
+    const sheetTables: SchemaInfo['tables'] = {};
+    for (const table of new Set((store.rowsets ?? []).filter((s) => s.rows.length + s.original.length > 0).map((s) => s.table))) {
+      sheetTables[table] = await live.db.columns(table);
+      if (sheetTables[table]!.length === 0 && !base.tables[table]) throw fail('BAD_REQUEST', `The world database has no ${table} table, so the rows held for it cannot be exported.`);
+    }
+    const schema: SchemaInfo = { ...base, tables: { ...ws.tables, ...sheetTables, ...base.tables } };
     const givers = all.flatMap((q) => [...relationOwners(q.aggregate, 'starter'), ...relationOwners(q.aggregate, 'ender')]).flatMap((o) => (o.kind === 'creature' ? [o.entry] : []));
     const questItems = all.flatMap((q) => questItemsOf(q.aggregate).map((item) => ({ item, questId: q.questId })));
     // Existing entities edited here are written as edits of their own rows, not compiled as new ones
@@ -136,7 +144,10 @@ export function createPatches(ctx: ApiContext) {
     // Existing entities edited here: their own rows, written over and put back
     // One given its first loot takes a free loot id when its entry is already someone else's list
     const loot = await newLootIds(live.db, store);
-    const edited = existingStatements(store, givers, loot.ids);
+    const base0 = existingStatements(store, givers, loot.ids);
+    // The sheets' rows (loot, addons, texts...) go beside them, whoever owns them
+    const sheets = rowsetStatements(store.rowsets);
+    const edited = { apply: [...base0.apply, ...sheets.apply], revert: [...base0.revert, ...sheets.revert] };
     // A row the editor writes new (stock, a trainer's spells) sets only its own columns: the table's other columns take their defaults
     const existing = {
       ...edited,

@@ -53,7 +53,7 @@ describe('the project patch', () => {
   it('says there is nothing to export with no entities and no world edits', async () => {
     const { api } = await setup();
     const out: any = await api.exportProject();
-    expect(out.error.message).toBe('There are no NPCs, objects, items or world changes to export.');
+    expect(out.error.message).toBe('There are no NPCs, objects, items, table rows or world changes to export.');
   });
 
   it('a quest patch holds quest rows only and counts the project entities it uses', async () => {

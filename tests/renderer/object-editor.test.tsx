@@ -20,9 +20,9 @@ const tab = (name: string) => userEvent.click(screen.getByRole('tab', { name }))
 describe('object editor', () => {
   it('shows Contents only for objects that hold pages or loot', async () => {
     const { rerender } = render(<Live api={makeMockApi()} start={{ ...newObject(9100001), type: 'generic' }} />);
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Basics', 'Look', 'Scripts', 'Placement']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Basics', 'Look', 'Details', 'Scripts', 'Placement']);
     await userEvent.selectOptions(screen.getByLabelText('Type'), 'Lootable');
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Basics', 'Look', 'Contents', 'Scripts', 'Placement']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Basics', 'Look', 'Contents', 'Details', 'Scripts', 'Placement']);
     await tab('Contents');
     expect(screen.getByRole('button', { name: 'Add loot' })).toBeTruthy();
     rerender(<Live api={makeMockApi()} start={current} />);

@@ -67,6 +67,61 @@ Port editor by editor (ordered by CoA value):
    condition builder usable from gossip, loot, SAI, quests). Game tele.
 7. Tools: unused-guid search (reuse `src/core/ids`), SQL console (read-only to world DB).
 
+### Gap audit (branch `feat/keira-coverage`)
+
+Status: **covered** (AWE edits it in full), **partial** (some columns or cases), **missing**. The last column says where it is
+done in this branch, or what stays open. Every row written goes through the project pipeline (undoable, exported as SQL with a
+revert); the world database is only read.
+
+How the new editors work. One table is one `TableSpec` (`src/core/tables/specs.ts`): its columns with labels, help, named
+flags, enums and id pickers. One sheet (`src/renderer/tables/Sheet.tsx`) edits any spec; one writer (`rowsetStatements`) turns
+the held `RowSet`s into DELETE-by-key plus INSERT with a revert; one validator (`rowsetIssues`) checks them. Sets live in
+`ProjectEntities.rowsets`, beside the entities, and leave with their owner. Columns of a template row (`creature_template`,
+`gameobject_template`) are laid over the row the entity already writes (`overlayColumns`). Loot, texts and every standalone table
+use the same pieces.
+
+| Keira3 editor | AWE today | Result |
+|---|---|---|
+| creature_template | partial: name, levels, faction, rank, type, flags for gossip/quests/vendor/trainer, health and damage multipliers | covered: Traits tab (combat, movement, kind, flags, rewards, immunities set, advanced) |
+| creature_template_addon | missing | covered: Behaviour tab (stance, height, weapons, mount, emote, auras, path) |
+| creature_template_model | partial: first model only | partial: first model (Look tab); further models (`Idx` > 0) remain |
+| creature_template_movement | missing | covered: Behaviour tab |
+| creature_template_resistance | missing | covered: Behaviour tab |
+| creature_template_spell | missing | covered: Behaviour tab |
+| creature_equip_template | partial: main hand, off hand, ranged of set 1 | partial: other equipment sets remain |
+| creature_formations | missing | covered: Tables dialog (Spawns and groups) |
+| creature_onkill_reputation | missing | covered: Rewards tab |
+| creature_questitem | partial: through the quest drops panel | covered: Rewards tab |
+| creature_text | partial: written by scenes, read by SmartAI | covered: Texts tab |
+| creature spawn, spawn addon | spawns: covered in the World view; `creature_addon` of a spawn: partial (path only) | partial: spawn addon (mount, auras, stance of one spawn) remains |
+| npc_vendor, trainer, default trainer | covered (Vendor, Trainer tabs) | covered |
+| creature_loot_template | covered (Loot tab) | covered |
+| pickpocketing_loot_template, skinning_loot_template | missing | covered: Rewards tab, shared loot sheet |
+| SAI (creature) | covered (phase 2) | covered |
+| quest_template | covered (quest panels) | covered |
+| quest_template_addon (prev/next/exclusive/breadcrumb, skill, rep, special flags) | covered (Requirements, Chain panels) | covered |
+| quest_template_locale | covered (locales) | covered |
+| quest_offer_reward, quest_request_items | covered (Dialogue panel) | covered |
+| creature/gameobject queststarter and questender | covered (Giver panel) | covered |
+| quest chain view, breadcrumbs, exclusive groups | covered (quests dock graph, link components) | covered |
+| gameobject_template | partial: type, look, size, name, page, loot id, quest | covered: Details tab (settings of chests and use-once objects, advanced) |
+| gameobject_template_addon | missing | covered: Details tab |
+| gameobject_loot_template | covered (chests) | covered |
+| gameobject_questitem | partial: quest drops panel | covered: Details tab |
+| gameobject spawn addon (`gameobject_addon`) | missing | missing: stays open |
+| item_template (stats, sockets, spells, flags) | covered: typed stats, damage, spells; every other column raw under Advanced | partial: flags and sockets as raw numbers; named toggles remain |
+| item_enchantment_template | missing | covered: Tables dialog |
+| item, disenchant, prospecting, milling loot | missing | covered: item tabs "Opens into" and "Breaks down into" |
+| reference, fishing, mail, spell loot | missing | covered: Tables dialog, same loot sheet |
+| broadcast_text, npc_text, page_text, acore_string | partial: npc_text and page_text through gossip and readable objects | covered: Tables dialog |
+| gossip_menu, gossip_menu_option | covered (Gossip tab) | covered |
+| conditions | partial: quest conditions; gossip conditions read, never written | covered: shared condition builder (gossip, loot, quests, SmartAI) |
+| game_tele | missing | covered: Tables dialog |
+| trainer | covered | covered |
+| creature_immunities | missing | covered: Tables dialog, and the Traits tab names the set |
+| unused guid / id search | partial: ids are allocated for new things | covered: Tools in the Tables dialog |
+| SQL console | missing | covered: read-only, enforced in the database layer (SELECT, SHOW, DESCRIBE, EXPLAIN; one statement; read-only transaction) |
+
 ## Phase 4 - DBC/MPQ editor and spell editor
 
 - DBC writer next to the existing reader (`src/core/game/dbc.ts`): load, edit, save WDBC with

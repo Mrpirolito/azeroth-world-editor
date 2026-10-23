@@ -10,6 +10,8 @@ import { readSmartScripts, objectSpawnGuids } from '../smartai/read';
 import { numberOf as smartNumber, type SmartRow } from '../smartai/row';
 import { npcSpawnGuids, spawnEventRows } from './spawn-events-read';
 import { rowsOrNone } from '../db/rows-or-none';
+import { overlayColumns } from '../tables/rowset';
+import type { RowSet } from '../tables/types';
 import {
   existingOnly, gossipUnread, sameGossip, sameGossipMenu, sameGossipOption, sameTrainer, sameVendor, trainerUnread, TRAINER_TYPE_VALUE, vendorUnread, NPC_TYPE_VALUE, OBJECT_TYPE_VALUE, RANK_VALUE,
   type CustomItem, type CustomNpc, type CustomObject, type LootRow, type OriginalRows, type Page, type ProjectEntities, type StoredOrigin, type GossipMenu, type GossipOption, type GossipTree, type Trainer, type VendorItem,
@@ -296,7 +298,7 @@ export async function newLootIds(
   return { ids, warnings };
 }
 
-function npcStatements(out: Statements, npc: CustomNpc, origin: Existing, givers: readonly number[], lootIds: LootIds): void {
+function npcStatements(out: Statements, npc: CustomNpc, origin: Existing, givers: readonly number[], lootIds: LootIds, sets: readonly RowSet[] | undefined): void {
   const entry = text(npc.entry);
   const original: Row = rowsOf(origin, 'creature_template')[0] ?? { entry };
   const lootLocked = origin.locked.includes('loot');
@@ -336,7 +338,8 @@ function npcStatements(out: Statements, npc: CustomNpc, origin: Existing, givers
       ...(n.seenBy && n.seenBy !== seenByOf(original) ? seenByColumns(n.seenBy, original) : {}),
     };
   };
-  writeTable(out, origin, 'creature_template', [{ entry }], [keepUnedited(templateRow(npc), templateRow(asRead), original, [], ['npcflag', 'lootid', 'AIName', 'gossip_menu_id'])]);
+  // The Traits tab's columns lie over the template row, whatever the Basics tab wrote
+  writeTable(out, origin, 'creature_template', [{ entry }], [{ ...keepUnedited(templateRow(npc), templateRow(asRead), original, [], ['npcflag', 'lootid', 'AIName', 'gossip_menu_id']), ...overlayColumns(sets, 'creature_template', npc.entry) }]);
 
   const model = rowsOf(origin, 'creature_template_model').find((r) => num(r.Idx) === 0) ?? { CreatureID: entry, Idx: '0', Probability: '1' };
   writeTable(out, origin, 'creature_template_model', [{ CreatureID: entry, Idx: '0' }], [
@@ -359,7 +362,7 @@ function npcStatements(out: Statements, npc: CustomNpc, origin: Existing, givers
   if (!origin.locked.includes('scenes')) writeSmartScripts(out, origin, npc.smartScripts);
 }
 
-function objectStatements(out: Statements, object: CustomObject, origin: Existing, lootIds: LootIds): void {
+function objectStatements(out: Statements, object: CustomObject, origin: Existing, lootIds: LootIds, sets: readonly RowSet[] | undefined): void {
   const entry = text(object.entry);
   const original: Row = rowsOf(origin, 'gameobject_template')[0] ?? { entry };
   const smartRows = smartLocked('object', original) ? null : object.smartScripts;
@@ -381,7 +384,7 @@ function objectStatements(out: Statements, object: CustomObject, origin: Existin
       Object.assign(row, { Data1: text(lootId), Data8: quest });
     }
   }
-  writeTable(out, origin, 'gameobject_template', [{ entry }], [row]);
+  writeTable(out, origin, 'gameobject_template', [{ entry }], [{ ...row, ...overlayColumns(sets, 'gameobject_template', object.entry) }]);
   if (!origin.locked.includes('loot') && lootId > 0) writeTable(out, origin, 'gameobject_loot_template', [{ Entry: text(lootId) }], lootRows(lootId, object.loot, rowsOf(origin, 'gameobject_loot_template')));
   writePages(out, origin, object.pages);
   writeSmartScripts(out, origin, smartRows);
@@ -399,8 +402,8 @@ function itemStatements(out: Statements, item: CustomItem, origin: Existing): vo
 export function existingStatements(store: ProjectEntities, givers: readonly number[], lootIds: LootIds = new Map()): Statements {
   const out: Statements = { apply: [], revert: [] };
   const edited = existingOnly(store);
-  for (const npc of edited.npcs) if (npc.origin.kind === 'existing') npcStatements(out, npc, npc.origin, givers, lootIds);
-  for (const object of edited.objects) if (object.origin.kind === 'existing') objectStatements(out, object, object.origin, lootIds);
+  for (const npc of edited.npcs) if (npc.origin.kind === 'existing') npcStatements(out, npc, npc.origin, givers, lootIds, store.rowsets);
+  for (const object of edited.objects) if (object.origin.kind === 'existing') objectStatements(out, object, object.origin, lootIds, store.rowsets);
   for (const item of edited.items) if (item.origin.kind === 'existing') itemStatements(out, item, item.origin);
   return out;
 }

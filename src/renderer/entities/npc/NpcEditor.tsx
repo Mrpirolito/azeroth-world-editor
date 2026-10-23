@@ -14,6 +14,7 @@ import { ScriptsTab } from '../ScriptsTab';
 import { TrainerTab } from '../TrainerTab';
 import { VendorList } from '../VendorList';
 import { SpawnList } from '../SpawnList';
+import { NpcBehaviour, NpcRewards, NpcTexts, NpcTraits } from '../../tables/EntitySheets';
 import { NpcBasics } from './NpcBasics';
 import { NpcLook } from './NpcLook';
 import { type ExistingFacts, ExistingLoot } from '../existing-facts';
@@ -115,6 +116,10 @@ export function NpcEditor({
       ),
   });
   tabs.push({ id: 'trainer', label: 'Trainer', render: () => <TrainerTab npc={npc} onChange={onChange} allocateTrainer={allocateTrainer} /> });
+  tabs.push({ id: 'traits', label: 'Traits', render: () => <NpcTraits npc={npc} /> });
+  tabs.push({ id: 'behaviour', label: 'Behaviour', render: () => <NpcBehaviour npc={npc} /> });
+  tabs.push({ id: 'rewards', label: 'Rewards', render: () => <NpcRewards npc={npc} /> });
+  tabs.push({ id: 'texts', label: 'Texts', render: () => <NpcTexts npc={npc} /> });
   tabs.push({ id: 'gossip', label: 'Gossip', render: () => <GossipTab npc={npc} onChange={onChange} allocate={allocateGossip} onTab={onTab} /> });
   tabs.push({ id: 'scripts', label: 'Scripts', render: () => <ScriptsTab npc={npc} onChange={onChange} onTab={onTab} quests={quests} /> });
   if (!existing) {

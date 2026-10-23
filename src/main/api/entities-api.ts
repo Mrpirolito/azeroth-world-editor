@@ -8,6 +8,7 @@ import { existingDrift } from '../../core/entities/existing';
 import { projectEntitiesSchema, type ProjectEntities } from '../../core/entities/model';
 import { itemFromRows, npcFromRows, objectFromRows } from '../../core/entities/from-rows';
 import { readExistingRows } from '../entities/existing';
+import { withoutOwner } from '../../core/tables/rowset';
 import type { EntitiesApi } from '../../shared/ipc';
 import type { Services } from './services';
 import { fail, run } from './errors';
@@ -157,7 +158,8 @@ export function createEntitiesApi(s: Services): EntitiesApi {
         const store = projectEntities();
         const list = kind === 'npc' ? 'npcs' : kind === 'object' ? 'objects' : 'items';
         if (!(store[list] as { entry: number }[]).some((e) => e.entry === entry)) throw fail('BAD_REQUEST', `There is no such ${kind === 'npc' ? 'NPC' : kind} in the project.`);
-        putEntities({ ...store, [list]: (store[list] as { entry: number }[]).filter((e) => e.entry !== entry) } as ProjectEntities);
+        const rowsets = withoutOwner(store.rowsets, kind === 'npc' ? 'creature' : kind === 'object' ? 'gameobject' : 'item', entry);
+        putEntities({ ...store, [list]: (store[list] as { entry: number }[]).filter((e) => e.entry !== entry), ...(rowsets.length > 0 ? { rowsets } : { rowsets: undefined }) } as ProjectEntities);
         // An item is never a giver; an NPC or object comes off every quest's giver cards
         const changed: { questId: number; aggregate: QuestAggregate }[] = [];
         if (kind !== 'item') {
