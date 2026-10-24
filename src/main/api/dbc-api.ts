@@ -4,9 +4,10 @@ import { patchNameIssue, DEFAULT_PATCH_NAME } from '../../core/dbc/patch-name';
 import { storeSize, type ProjectEntities } from '../../core/entities/model';
 import { rowsOrNone } from '../../core/links/context';
 import type { Dbc, DbcValue } from '../../core/game/dbc-file';
-import { DBC_LAYOUTS, layoutOf, SPELL_INDEX, type DbcLayout } from '../../core/game/dbc-formats';
+import { DBC_LAYOUTS, layoutOf, SPELL_FIELDS, SPELL_INDEX, type DbcLayout } from '../../core/game/dbc-formats';
 import { buildLookups, type DbcRow, type SpellLookups } from '../../core/spells/lookups';
-import { cloneSpell, spellText } from '../../core/spells/model';
+import { castSentence, effectSentences } from '../../core/spells/describe';
+import { cloneSpell, spellText, withSpell } from '../../core/spells/model';
 import { spellIssues } from '../../core/spells/validate';
 import type { Issue } from '../../core/validate/validate';
 import { hasWorldChanges } from '../../core/world/layer';
@@ -283,6 +284,40 @@ export function createDbcApi(s: Services, exportSql: ExportApi['exportProject'])
         if (!findRecord(editsOf(), l.file, id)) throw fail('BAD_REQUEST', `The project holds no record ${id} of ${l.file}.`);
         await asOneStep(async () => putEntities(store(withoutRecord(editsOf(), l.file, id))), `${l.file} ${id}: put back`);
         return true as const;
+      }),
+
+    spellRead: (id) =>
+      run(async () => {
+        const live = connected();
+        const l = layoutFor(SPELL_FILE);
+        const d = await fileFor(live, l);
+        const held = findRecord(editsOf(), SPELL_FILE, id);
+        const row = d.rowOfId(id);
+        if (!held && row === undefined) throw fail('BAD_REQUEST', `Spell ${id} is not in ${SPELL_FILE} or the project.`);
+        const values = held ? held.values : d.decode(row!, l.format);
+        const index = await s.files.spellsOf(live);
+        const describe = { lookups: await lookupsOf(live), spellName: (n: number) => ('reason' in index ? undefined : index.get(n)?.name) };
+        return {
+          id, state: held ? (held.was ? 'changed' : 'new') : 'file',
+          fields: Object.fromEntries(SPELL_FIELDS.map((f, i) => [f.name, values[i]!])),
+          summary: { name: spellText(values, 'Name'), rank: spellText(values, 'Rank'), cast: castSentence(values, describe), effects: effectSentences(values, describe) },
+          issues: await check(live, l, values),
+        };
+      }),
+
+    spellEdit: (id, changes) =>
+      run(async () => {
+        const live = connected();
+        const l = layoutFor(SPELL_FILE);
+        const d = await fileFor(live, l);
+        const held = findRecord(editsOf(), SPELL_FILE, id);
+        const row = d.rowOfId(id);
+        if (!held && row === undefined) throw fail('BAD_REQUEST', `Spell ${id} is not in ${SPELL_FILE} or the project; clone one with spellClone first.`);
+        const unknown = Object.keys(changes).filter((name) => !(name in SPELL_INDEX));
+        if (unknown.length > 0) throw fail('BAD_REQUEST', `Spell.dbc has no field ${unknown.join(', ')}. Read the spell to see the field names.`);
+        if ('ID' in changes) throw fail('BAD_REQUEST', 'The id of a spell is changed by cloning it to another id.');
+        const base = held ? held.values : d.decode(row!, l.format);
+        return asOneStep(() => hold(live, l, withSpell(base, changes)), `Spell ${id}: ${Object.keys(changes).join(', ')}`);
       }),
 
     spellClone: (baseId, id, name) =>

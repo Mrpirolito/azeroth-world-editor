@@ -46,6 +46,16 @@ export interface ClientPatchResult {
   issues: Issue[];
 }
 
+/** A spell as an AI client or a script sees it: every field by name, and what it does in words */
+export interface SpellReading {
+  id: number;
+  state: 'file' | 'changed' | 'new';
+  /** Every field of the record by name; effect fields end in 1, 2 or 3 */
+  fields: Record<string, number | string>;
+  summary: { name: string; rank: string; cast: string; effects: string[] };
+  issues: Issue[];
+}
+
 /** The DBC files the editor changes: read the server's copy, hold edits in the project, and write them out as files */
 export interface DbcApi {
   /** The tables the editor opens, with the number of records the server's copy has */
@@ -64,6 +74,10 @@ export interface DbcApi {
   dbcRemoveRecord(file: string, id: number): Promise<Result<true>>;
   /** Checks a record without holding it: the problems found, for spells with their ids, tables and ranges */
   dbcCheck(file: string, values: (number | string)[]): Promise<Result<{ issues: Issue[] }>>;
+  /** A spell by id (the project's version if it changed it) with every field by name, a summary in words and its problems */
+  spellRead(id: number): Promise<Result<SpellReading>>;
+  /** Changes fields of a spell by name (for example Name, ManaCost, EffectBasePoints1) and holds it in the project; the spell is checked and refused with its problems when one is an error */
+  spellEdit(id: number, changes: Record<string, number | string>): Promise<Result<{ id: number; issues: Issue[] }>>;
   /** Makes a new spell from an existing one, under `id` or the first free id after the highest, and holds it in the project */
   spellClone(baseId: number, id?: number, name?: string): Promise<Result<{ id: number; issues: Issue[] }>>;
   /** Writes the project's DBC edits as server files and a client patch archive, plus the SQL patch when the project has rows */

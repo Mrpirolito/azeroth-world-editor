@@ -3,6 +3,7 @@ import type { Field, Row, RowSet, TableSpec } from '@core/tables/types';
 import { LOOT_SOURCE } from '@core/conditions/catalogue';
 import { ConditionsDetails } from './ConditionsEditor';
 import { SheetField } from './SheetField';
+import { SqlPreview } from './SqlPreview';
 import { TextPicker } from './TextPicker';
 import { useRowSet } from './useRowSet';
 import './sheets.css';
@@ -128,6 +129,7 @@ export function Sheet({ spec, scope, owner, idPrefix, title, context = {} }: { s
         {row && !spec.overlay && <button type="button" className="btn sheet__clear" onClick={() => set.change([])}>Remove these settings</button>}
         {problems}
         {set.changed && <p className="scene-hint">Changed in this project.</p>}
+        {set.changed && <SqlPreview table={spec.table} scope={scope} rows={rows} />}
       </section>
     );
   }
@@ -153,6 +155,7 @@ export function Sheet({ spec, scope, owner, idPrefix, title, context = {} }: { s
       <button type="button" className="btn" onClick={() => set.change([...rows, blank(rows)])}>{spec.loot ? 'Add item' : `Add ${spec.title.toLowerCase()}`}</button>
       {problems}
       {set.changed && <p className="scene-hint">Changed in this project.</p>}
+      {set.changed && <SqlPreview table={spec.table} scope={scope} rows={rows} />}
     </section>
   );
 }

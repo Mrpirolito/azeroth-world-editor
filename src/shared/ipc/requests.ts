@@ -59,6 +59,7 @@ const viewportSchema = z.object({ x: z.number(), y: z.number(), zoom: z.number()
 const finite = z.number().finite();
 /** A DBC file by name and a record's values (numbers, and text for the string fields) */
 const dbcFile = z.string().min(5).max(64).regex(/^[A-Za-z0-9_]+[.]dbc$/i);
+const tableRowsArg = z.array(z.record(z.string().max(64), z.string().max(20000).nullable())).max(500);
 const dbcValues = z.array(z.union([finite, z.string().max(8000)])).min(1).max(300);
 /** Debug mode: a whole coordinate or size on screen, and a string in an answer from the page */
 const debugCoord = z.number().int().min(0).max(20000);
@@ -221,6 +222,10 @@ const REQUEST_SCHEMAS: Record<keyof Api, z.ZodType<unknown[]>> = {
   searchTable: z.tuple([z.string().min(1).max(64), z.string().max(200)]),
   freeIds: z.tuple([z.string().min(1).max(64), z.string().min(1).max(64), z.number().int().min(0), z.number().int().min(1).max(100)]),
   sqlQuery: z.tuple([z.string().min(1).max(20000)]),
+  tableSpecs: z.tuple([z.string().min(1).max(64).optional()]),
+  tableHeld: z.tuple([z.string().min(1).max(64), z.record(z.string(), z.string())]),
+  tableSet: z.tuple([z.string().min(1).max(64), z.record(z.string(), z.string()), tableRowsArg]),
+  tableSql: z.tuple([z.string().min(1).max(64), z.record(z.string(), z.string()), tableRowsArg.optional()]),
   dbcFiles: z.tuple([]),
   dbcSearch: z.tuple([dbcFile, z.string().max(200), z.number().int().min(1).max(200)]),
   dbcRecord: z.tuple([dbcFile, z.number().int().min(0)]),
@@ -229,6 +234,8 @@ const REQUEST_SCHEMAS: Record<keyof Api, z.ZodType<unknown[]>> = {
   dbcCheck: z.tuple([dbcFile, dbcValues]),
   dbcSetRecord: z.tuple([dbcFile, dbcValues]),
   dbcRemoveRecord: z.tuple([dbcFile, z.number().int().min(0)]),
+  spellRead: z.tuple([z.number().int().min(1)]),
+  spellEdit: z.tuple([z.number().int().min(1), z.record(z.string().max(64), z.union([finite, z.string().max(8000)]))]),
   spellClone: z.tuple([z.number().int().min(1), z.number().int().min(1).optional(), z.string().max(100).optional()]),
   exportClientPatch: z.tuple([z.object({ folder: z.string().max(500).optional(), patchName: z.string().max(40).optional(), mpq: z.boolean().optional() }).optional()]),
   smartScripts: z.tuple([z.enum(['creature', 'gameobject']), z.number().int()]),

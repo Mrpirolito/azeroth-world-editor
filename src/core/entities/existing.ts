@@ -298,6 +298,18 @@ export async function newLootIds(
   return { ids, warnings };
 }
 
+/** The loot list an NPC's drops are written under: the one its template row already names, else its own entry */
+export function npcLootId(npc: CustomNpc): number {
+  const original = npc.origin.kind === 'existing' ? num(rowsOf(npc.origin, 'creature_template')[0]?.lootid) : 0;
+  return original > 0 ? original : npc.entry;
+}
+
+/** The loot list a chest's contents are written under: the one its template row already names, else its own entry */
+export function objectLootId(object: CustomObject): number {
+  const original = object.origin.kind === 'existing' ? num(rowsOf(object.origin, 'gameobject_template')[0]?.Data1) : 0;
+  return original > 0 ? original : object.entry;
+}
+
 function npcStatements(out: Statements, npc: CustomNpc, origin: Existing, givers: readonly number[], lootIds: LootIds, sets: readonly RowSet[] | undefined): void {
   const entry = text(npc.entry);
   const original: Row = rowsOf(origin, 'creature_template')[0] ?? { entry };

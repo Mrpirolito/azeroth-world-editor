@@ -208,11 +208,27 @@ function entityChanges(before: EntitiesPart['before'], after: EntitiesPart['afte
     }
     for (const [entry, e] of was) if (!now.has(entry)) out.push({ text: `Deleted ${named(e) || `${word} ${entry}`}`, where: null });
   }
+  // Records of the DBC files (spells...) the project changes
+  const records = (store: EntitiesPart['before']) => new Map((store.dbcEdits ?? []).flatMap((e) => e.records.map((r) => [`${e.file}:${r.id}`, { file: e.file, ...r }] as const)));
+  const dbcBefore = records(before);
+  const dbcAfter = records(after);
+  const dbcName = (r: { file: string; id: number; values: (number | string)[] }): string => {
+    const spell = r.file.toLowerCase() === 'spell.dbc';
+    const name = spell ? String(r.values[136] ?? '').trim() : '';
+    return `${spell ? 'spell' : r.file.replace(/\.dbc$/i, '')} ${r.id}${name ? ` (${name})` : ''}`;
+  };
+  for (const [key, r] of dbcAfter) {
+    const old = dbcBefore.get(key);
+    if (old && isDeepStrictEqual(old.values, r.values)) continue;
+    out.push({ text: `${old ? 'Edit to' : r.was ? 'Edit to' : 'New'} ${dbcName(r)}`, where: null });
+  }
+  for (const [key, r] of dbcBefore) if (!dbcAfter.has(key)) out.push({ text: `Put back ${dbcName(r)}`, where: null });
   return out;
 }
 
 function describeEntities(part: EntitiesPart): Described {
   const changes = entityChanges(part.before, part.after);
+  if (changes.length === 0) return { label: 'Table rows', where: null };
   if (changes.length === 1) return { label: changes[0]!.text, where: changes[0]!.where };
   return { label: `NPCs and objects: ${changes.length} changes`, where: changes.find((c) => c.where)?.where ?? null };
 }

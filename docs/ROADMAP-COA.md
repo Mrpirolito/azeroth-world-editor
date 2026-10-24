@@ -136,6 +136,8 @@ Still open after this branch: the creature loot and chest loot lists of the Loot
   loads last, plus the SQL patch.
 - Later: other DBCs (SpellIcon, Item display, Faction, Map/Area) with the same generic editor.
 
+Status (branch `feat/dbc-spell-editor`): implemented. `Dbc` (`src/core/game/dbc-file.ts`) reads, edits and writes WDBC by format string (an untouched file is written back byte for byte); `src/main/mpq-writer.ts` writes MPQ v1 archives the existing reader opens. The Spells window (app bar) has the spell editor (Basics, Casting, Effects, Attributes, Advanced, plus the nine spell tables as DB tabs), a generic client-table browser (SpellIcon, SpellRange, SpellCastTimes, SpellDuration, SpellRadius, Item, ItemDisplayInfo, Faction, AreaTable) and Export client patch (server DBC files in a new folder of the export folder, patch-CZZZ.MPQ, INSTALL.txt with the .bak reminder, and the SQL patch). DBC edits live in `ProjectEntities.dbcEdits` and undo like any step. MCP tools: table_specs, table_rows, search_table, set_table_rows, table_sql, sql_query, free_table_ids, search_spells, read_spell, clone_spell, edit_spell, dbc_*, export_client_patch. Phase-3 gaps closed: condition button on the old creature and chest loot lists, and "SQL this will write" under every changed sheet.
+
 ### Step 0: the CoA client files (checked on the repack's `Data/dbc`)
 
 The server format strings (`DBCfmt.h`) and structs (`DBCStructure.h`) are the truth; the files agree with stock 3.3.5a for every table the editor changes, so nothing needs a special layout.

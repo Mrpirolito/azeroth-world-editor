@@ -58,6 +58,23 @@ describe('Database tables dialog', () => {
     expect(within(screen.getByRole('navigation', { name: 'Tables' })).getByRole('button', { name: 'Teleport places (1 changed)' })).toBeTruthy();
   });
 
+  it('shows the SQL a changed sheet will write, and the SQL that puts the rows back', async () => {
+    store = EMPTY_ENTITIES;
+    const tableSql = vi.fn(async () => okv({ sql: "DELETE FROM `game_tele` WHERE `id` = 2;\nINSERT INTO `game_tele` (`id`, `name`) VALUES (2, 'Orgrimmar!');", revert: "INSERT INTO `game_tele` (`id`, `name`) VALUES (2, 'Orgrimmar');", note: null }));
+    render(<Dialog api={mockApi({ tableSql })} />);
+    await nav('Teleport places');
+    await userEvent.type(screen.getByLabelText(/Find by id/), '2');
+    await userEvent.click(screen.getByRole('button', { name: 'Open id 2' }));
+    const sheet = await screen.findByRole('region', { name: 'Teleport places: id 2' });
+    // Nothing to show while the rows are as the database has them
+    expect(within(sheet).queryByText('SQL this will write')).toBeNull();
+    await userEvent.type(within(sheet).getByLabelText('Name'), '!');
+    await userEvent.click(within(sheet).getByText('SQL this will write'));
+    expect(await within(sheet).findByLabelText('SQL to apply')).toHaveTextContent("INSERT INTO `game_tele` (`id`, `name`) VALUES (2, 'Orgrimmar!');");
+    expect(within(sheet).getByLabelText('SQL to revert')).toHaveTextContent("'Orgrimmar'");
+    expect(tableSql).toHaveBeenLastCalledWith('game_tele', { id: '2' }, [expect.objectContaining({ id: '2', name: 'Orgrimmar!' })]);
+  });
+
   it('starts a new row on the first free id', async () => {
     store = EMPTY_ENTITIES;
     render(<Dialog api={mockApi()} />);

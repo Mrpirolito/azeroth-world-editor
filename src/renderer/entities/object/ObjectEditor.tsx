@@ -1,6 +1,7 @@
 import type { CustomObject, Spawn } from '@core/entities/model';
 import { EditorTabs, type EditorTab } from '../EditorTabs';
 import { LootList } from '../LootList';
+import { objectLootId } from '@core/entities/existing';
 import { SpawnList } from '../SpawnList';
 import { ExistingLoot, type ExistingFacts } from '../existing-facts';
 import { describeObject } from '@core/entities/describe';
@@ -55,7 +56,7 @@ export function ObjectEditor({
           {hasPages && <PageList pages={object.pages} onChange={(pages) => onChange({ ...object, pages })} allocate={allocatePage} />}
           {object.type === 'chest' && (
             <ExistingLoot existing={existing}>
-              <LootList idPrefix={`obj-${object.entry}`} loot={object.loot} onChange={(loot) => onChange({ ...object, loot })} />
+              <LootList idPrefix={`obj-${object.entry}`} loot={object.loot} onChange={(loot) => onChange({ ...object, loot })} conditions={{ table: 'gameobject_loot_template', listId: objectLootId(object), owner: { kind: 'gameobject', entry: object.entry } }} />
             </ExistingLoot>
           )}
         </div>

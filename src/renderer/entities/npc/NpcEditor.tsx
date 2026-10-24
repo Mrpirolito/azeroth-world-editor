@@ -15,6 +15,7 @@ import { TrainerTab } from '../TrainerTab';
 import { VendorList } from '../VendorList';
 import { SpawnList } from '../SpawnList';
 import { describeNpc } from '@core/entities/describe';
+import { npcLootId } from '@core/entities/existing';
 import { NpcBehaviour, NpcRewards, NpcTexts, NpcTraits } from '../../tables/EntitySheets';
 import { NpcBasics } from './NpcBasics';
 import { NpcLook } from './NpcLook';
@@ -95,7 +96,7 @@ export function NpcEditor({
       label: 'Loot',
       render: () => (
         <ExistingLoot existing={existing}>
-          <LootList idPrefix={`npc-${npc.entry}`} loot={npc.loot} onChange={(loot) => onChange({ ...npc, loot })} />
+          <LootList idPrefix={`npc-${npc.entry}`} loot={npc.loot} onChange={(loot) => onChange({ ...npc, loot })} conditions={{ table: 'creature_loot_template', listId: npcLootId(npc), owner: { kind: 'creature', entry: npc.entry } }} />
         </ExistingLoot>
       ),
     },

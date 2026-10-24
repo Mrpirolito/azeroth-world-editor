@@ -12,7 +12,7 @@ import { createProjectSession } from '../../src/main/project/session';
 import { openStore } from '../../src/main/store/store';
 import type { HistoryResult } from '../../src/shared/history';
 import type { ConnectSummary } from '../../src/shared/ipc';
-import { forkDb } from './fixtures';
+import { forkDb, forkDbWith } from './fixtures';
 import { memFs } from './mem-fs';
 
 const box = { encrypt: (s: string) => Uint8Array.from(Buffer.from(s)), decrypt: (b: Uint8Array) => Buffer.from(b).toString() };
@@ -31,6 +31,12 @@ export interface McpFixtureOptions {
   flush?: () => Promise<void>;
   /** A stand-in for Debug mode's controller; absent means the app has none. */
   debug?: unknown;
+  /** More dependencies for the API (a server data folder, a file writer) */
+  deps?: Record<string, unknown>;
+  /** More fields for the connection profile (`dbcDir`) */
+  profile?: Record<string, unknown>;
+  /** Extra tables the in-memory database has (the fork's DDL names) */
+  tables?: readonly string[];
 }
 
 /**
@@ -39,7 +45,7 @@ export interface McpFixtureOptions {
  * client on the other.
  */
 export async function mcpFixture(tools: readonly ToolDef[], opts: McpFixtureOptions = {}) {
-  const db = forkDb();
+  const db = opts.tables ? forkDbWith([...opts.tables]) : forkDb();
   db.insert('creature_template', { entry: '1423', name: 'Stormwind Guard' });
   db.insert('creature', { guid: '80330', id1: '1423', map: '0', position_x: '-9481.31', position_y: '74.42', position_z: '56.55', orientation: '1.5' });
   const session = createProjectSession(defaultProjectMeta('P', 'C:/out'));
@@ -65,9 +71,10 @@ export async function mcpFixture(tools: readonly ToolDef[], opts: McpFixtureOpti
     projects,
     mcp: { wikiEnabled: () => opts.wiki ?? false } as never,
     ...(opts.debug ? { debug: opts.debug as never } : {}),
+    ...(opts.deps as object),
     ...(opts.fetch ? { fetch: async (url: string) => opts.fetch!(url) } : {}),
   });
-  const rec: any = await api.saveProfile({ name: 'w', role: 'world', host: 'h', port: 1, user: 'u', database: 'd', password: 'p' });
+  const rec: any = await api.saveProfile({ name: 'w', role: 'world', host: 'h', port: 1, user: 'u', database: 'd', password: 'p', ...opts.profile });
   if (opts.connect !== false) await api.connect(rec.value.id);
 
   const changes: HistoryResult[] = [];

@@ -7,10 +7,11 @@ import { ConditionsEditor } from '../../src/renderer/tables/ConditionsEditor';
 import { Sheet } from '../../src/renderer/tables/Sheet';
 import { VendorList } from '../../src/renderer/entities/VendorList';
 import { NpcEditor } from '../../src/renderer/entities/npc/NpcEditor';
+import { ObjectEditor } from '../../src/renderer/entities/object/ObjectEditor';
 import { NamesProvider } from '../../src/renderer/state/names';
 import { ProjectEntitiesProvider, type ProjectEntitiesValue } from '../../src/renderer/state/project-entities';
 import { makeMockApi, okv } from './mock-api';
-import { EMPTY_ENTITIES, newNpc, type CustomNpc, type ProjectEntities } from '../../src/core/entities/model';
+import { EMPTY_ENTITIES, newNpc, newObject, type CustomNpc, type CustomObject, type ProjectEntities } from '../../src/core/entities/model';
 import { specOf } from '../../src/core/tables/specs';
 import { EMPTY_WORLD } from '../../src/core/world/layer';
 import type { Row } from '../../src/core/tables/types';
@@ -117,5 +118,42 @@ describe('where the builder is offered', () => {
     expect(cond()!.scope).toEqual({ SourceTypeOrReferenceId: '15', SourceGroup: '60001', SourceEntry: '3', SourceId: '0' });
     expect(cond()!.owner).toEqual({ kind: 'creature', entry: 12000001 });
     void within;
+  });
+  it('under the drops of an NPC made here, as source 1 with its own loot list', async () => {
+    reset();
+    const start: CustomNpc = { ...newNpc(12000001), loot: [{ item: 2589, chance: 50, min: 1, max: 1, questOnly: false }, { item: 0, chance: 100, min: 1, max: 1, questOnly: false }] };
+    function Drops() {
+      const [npc, setNpc] = useState(start);
+      return <Project><NpcEditor npc={npc} onChange={setNpc} allocateSpawn={async () => 1} tab="loot" /></Project>;
+    }
+    render(<Drops />);
+    // A row with no item yet has nothing to attach conditions to
+    expect(screen.getAllByText('Only drops when')).toHaveLength(1);
+    await userEvent.click(screen.getByText('Only drops when'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a condition' }));
+    expect(cond()!.scope).toEqual({ SourceTypeOrReferenceId: '1', SourceGroup: '12000001', SourceEntry: '2589', SourceId: '0' });
+    expect(cond()!.owner).toEqual({ kind: 'creature', entry: 12000001 });
+  });
+
+  it('under the drops of an existing NPC, keyed by the loot list its template names', async () => {
+    reset();
+    const existing: CustomNpc = {
+      ...newNpc(1423), origin: { kind: 'existing', original: { creature_template: [{ entry: '1423', lootid: '1500' }] }, locked: [], sharedLoot: 0, spawnCount: 0, sharedTrainer: 0, sharedMenus: 0, sharedTexts: 0, databaseScripts: 0 } as never,
+      loot: [{ item: 2589, chance: 50, min: 1, max: 1, questOnly: false }],
+    };
+    render(<Project><NpcEditor npc={existing} onChange={() => {}} allocateSpawn={async () => 1} tab="loot" /></Project>);
+    await userEvent.click(await screen.findByText('Only drops when'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a condition' }));
+    expect(cond()!.scope).toMatchObject({ SourceTypeOrReferenceId: '1', SourceGroup: '1500', SourceEntry: '2589' });
+  });
+
+  it('under the contents of a chest, as source 4', async () => {
+    reset();
+    const chest: CustomObject = { ...newObject(9100001), type: 'chest', loot: [{ item: 118, chance: 100, min: 1, max: 2, questOnly: false }] };
+    render(<Project><ObjectEditor object={chest} onChange={() => {}} allocateSpawn={async () => 1} allocatePage={async () => 1} tab="contents" /></Project>);
+    await userEvent.click(await screen.findByText('Only drops when'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a condition' }));
+    expect(cond()!.scope).toEqual({ SourceTypeOrReferenceId: '4', SourceGroup: '9100001', SourceEntry: '118', SourceId: '0' });
+    expect(cond()!.owner).toEqual({ kind: 'gameobject', entry: 9100001 });
   });
 });
