@@ -33,7 +33,13 @@ export class DuplicateUpdateError extends Error {
   }
 }
 
-/** The order AzerothCore applies updates in: by file name over all folders together (a std::set keyed by name) */
+/**
+ * The order the live server's history implies: released core updates, then modules (installed on an existing
+ * core), then pending and custom updates, each by file name. AzerothCore's own single by-name order runs a
+ * module base file before the core updates it was written against, so a fresh install fails.
+ */
+const STATE_RANK: Readonly<Record<UpdateState, number>> = { RELEASED: 0, MODULE: 1, PENDING: 2, CUSTOM: 3 };
+
 export function orderUpdates(files: readonly UpdateFile[]): UpdateFile[] {
   const seen = new Map<string, UpdateFile>();
   for (const f of files) {
@@ -41,7 +47,7 @@ export function orderUpdates(files: readonly UpdateFile[]): UpdateFile[] {
     if (other) throw new DuplicateUpdateError(f.name, [other.path, f.path]);
     seen.set(f.name, f);
   }
-  return [...files].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  return [...files].sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
 /**

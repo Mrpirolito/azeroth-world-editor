@@ -6,9 +6,9 @@ import { idCollisions, insertedIds, prBody, type IdSearch } from '../../src/core
 const f = (name: string, state: UpdateFile['state'] = 'RELEASED', dir = 'd'): UpdateFile => ({ name, path: `${dir}/${name}`, state });
 
 describe('update order', () => {
-  it('orders by file name over every folder together, as the server does', () => {
+  it('runs released core updates, then modules, then pending, each by file name', () => {
     const files = [f('rev_20261030_40_x.sql', 'PENDING'), f('2026_08_22_03.sql'), f('2026_09_16_00_mod.sql', 'MODULE'), f('01_base.sql', 'MODULE')];
-    expect(orderUpdates(files).map((x) => x.name)).toEqual(['01_base.sql', '2026_08_22_03.sql', '2026_09_16_00_mod.sql', 'rev_20261030_40_x.sql']);
+    expect(orderUpdates(files).map((x) => x.name)).toEqual(['2026_08_22_03.sql', '01_base.sql', '2026_09_16_00_mod.sql', 'rev_20261030_40_x.sql']);
   });
 
   it('refuses two files of one name', () => {

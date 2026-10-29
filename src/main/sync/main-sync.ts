@@ -2,7 +2,7 @@ import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SyncSettings, SyncStatus } from '../../shared/ipc';
 import { gitIn, type Runner } from './git';
-import { applyPlan, collectUpdateFiles, ensureWorldFromBase, planFor, type SyncDb, type SyncServer } from './world-sync';
+import { applyPlan, cliImporter, collectUpdateFiles, ensureWorldFromBase, planFor, type SyncDb, type SyncServer } from './world-sync';
 
 /** The database AWE works in when it is aligned with main; never the user's own world database */
 export const AWE_DB = 'awe_world';
@@ -108,6 +108,7 @@ export interface SyncOutcome {
   created: boolean;
   applied: string[];
   renamed: string[];
+  failed: { name: string; error: string }[];
 }
 
 /**
@@ -122,7 +123,7 @@ export async function syncMain(ports: MainSyncPorts, db: SyncDb, server: SyncSer
   const created = await ensureWorldFromBase(db, ports.run, settings, server, AWE_DB, rebuild);
   const files = await (ports.collect ?? collectUpdateFiles)(settings.worktreeDir);
   const plan = await planFor(db, AWE_DB, files);
-  const { applied, renamed } = await applyPlan(db, AWE_DB, plan);
+  const { applied, renamed, failed } = await applyPlan(db, AWE_DB, plan, undefined, cliImporter(ports.run, settings.mysqlBin, server, AWE_DB), true);
   ports.kv.set(STATE_KEY, JSON.stringify({ sha, at: ports.now().toISOString() } satisfies SyncState));
-  return { sha, created, applied, renamed };
+  return { sha, created, applied, renamed, failed };
 }

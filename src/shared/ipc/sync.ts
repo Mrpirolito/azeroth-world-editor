@@ -44,6 +44,8 @@ export interface SyncResult {
   /** The update files that ran, in order */
   applied: string[];
   renamed: string[];
+  /** Update files that failed; they were skipped, so awe_world can differ from the server where they apply */
+  failed: { name: string; error: string }[];
   /** AWE is connected to awe_world now */
   connect: ConnectSummary;
   status: SyncStatus;

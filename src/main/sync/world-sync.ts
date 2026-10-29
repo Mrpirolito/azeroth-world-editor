@@ -85,6 +85,15 @@ const UPDATES_TABLE = `CREATE TABLE IF NOT EXISTS \`updates\` (
   PRIMARY KEY (\`name\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`;
 
+/** Runs one SQL file into `database` with the MySQL CLI, which handles DELIMITER blocks and big files; the password goes through the environment only */
+export function cliImporter(run: Runner, mysqlBin: string, server: SyncServer, database: string): (path: string) => Promise<void> {
+  const args = [`--host=${server.host}`, `--port=${server.port}`, `--user=${server.user}`, '--default-character-set=utf8mb4', '--init-command=SET collation_connection = utf8mb4_unicode_ci', '--max-allowed-packet=1G', database];
+  return async (path) => {
+    const r = await run(mysqlBin, args, { env: { MYSQL_PWD: server.password }, stdinFile: path });
+    if (r.code !== 0) throw new Error((r.stderr || r.stdout).trim());
+  };
+}
+
 /**
  * Builds `target` like a fresh AzerothCore install: the database is created and every file of
  * data/sql/base/db_world is imported with the MySQL CLI (the files are too big for mysql2). With `rebuild` an
@@ -99,12 +108,9 @@ export async function ensureWorldFromBase(db: SyncDb, run: Runner, settings: Pic
   if (files.length === 0) throw new Error(`No base SQL files in ${dir}.`);
   await db.query(`DROP DATABASE IF EXISTS ${q(target)}`);
   await db.query(`CREATE DATABASE ${q(target)} DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-  const args = [`--host=${server.host}`, `--port=${server.port}`, `--user=${server.user}`, '--default-character-set=utf8mb4', '--max-allowed-packet=1G', target];
+  const importFile = cliImporter(run, settings.mysqlBin, server, target);
   try {
-    for (const name of files) {
-      const r = await run(settings.mysqlBin, args, { env: { MYSQL_PWD: server.password }, stdinFile: join(dir, name) });
-      if (r.code !== 0) throw new Error(`${name}: ${(r.stderr || r.stdout).trim()}`);
-    }
+    for (const name of files) await importFile(join(dir, name)).catch((e: Error) => Promise.reject(new Error(`${name}: ${e.message}`)));
   } catch (e) {
     await db.query(`DROP DATABASE IF EXISTS ${q(target)}`).catch(() => undefined);
     throw e;
@@ -130,11 +136,20 @@ export class UpdateFailedError extends Error {
 export interface ApplyResult {
   applied: string[];
   renamed: string[];
+  /** Files that failed with keepGoing; left unrecorded so the next sync tries them again */
+  failed: { name: string; error: string }[];
 }
 
 /** Runs the plan in order on `database`, recording each file in `updates` as AzerothCore does; stops at the first failure */
-export async function applyPlan(db: SyncDb, database: string, plan: UpdatePlan, read: (path: string) => Promise<string> = (p) => readFile(p, 'utf8')): Promise<ApplyResult> {
-  const result: ApplyResult = { applied: [], renamed: [] };
+export async function applyPlan(
+  db: SyncDb,
+  database: string,
+  plan: UpdatePlan,
+  read: (path: string) => Promise<string> = (p) => readFile(p, 'utf8'),
+  exec?: (path: string) => Promise<void>,
+  keepGoing = false,
+): Promise<ApplyResult> {
+  const result: ApplyResult = { applied: [], renamed: [], failed: [] };
   await db.query(`USE ${q(database)}`);
   for (const r of plan.renames) {
     await db.query('UPDATE updates SET name = ? WHERE name = ?', [r.file.name, r.from]);
@@ -143,9 +158,13 @@ export async function applyPlan(db: SyncDb, database: string, plan: UpdatePlan, 
   for (const { file, hash } of plan.apply) {
     const started = Date.now();
     try {
-      await db.query(await read(file.path));
+      if (exec) await exec(file.path);
+      else await db.query(await read(file.path));
     } catch (e) {
-      throw new UpdateFailedError(file.name, e instanceof Error ? e.message : String(e));
+      const error = new UpdateFailedError(file.name, e instanceof Error ? e.message : String(e));
+      if (!keepGoing) throw error;
+      result.failed.push({ name: file.name, error: error.message });
+      continue;
     }
     await db.query('REPLACE INTO updates (name, hash, state, speed) VALUES (?, ?, ?, ?)', [file.name, hash, file.state, Date.now() - started]);
     result.applied.push(file.name);

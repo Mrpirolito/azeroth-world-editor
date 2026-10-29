@@ -130,7 +130,7 @@ describe('building awe_world from the base SQL', () => {
     expect(seen.map((x) => x.stdinFile?.split(/[\\/]/).pop())).toEqual(['a.sql', 'b.sql', 'c.sql']);
     expect(seen.every((x) => x.env?.MYSQL_PWD === 'secret-pw')).toBe(true);
     expect(JSON.stringify(seen.map((x) => x.args))).not.toContain('secret-pw');
-    expect(seen[0]!.args).toEqual(['--host=h', '--port=3307', '--user=u', '--default-character-set=utf8mb4', '--max-allowed-packet=1G', 'awe_world']);
+    expect(seen[0]!.args).toEqual(['--host=h', '--port=3307', '--user=u', '--default-character-set=utf8mb4', '--init-command=SET collation_connection = utf8mb4_unicode_ci', '--max-allowed-packet=1G', 'awe_world']);
   });
 
   it('stops at the first failing file and drops the database', async () => {
