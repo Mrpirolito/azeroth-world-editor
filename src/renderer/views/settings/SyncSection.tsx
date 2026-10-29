@@ -42,7 +42,7 @@ export function SyncSection({ store, setBusy }: SettingsSectionProps): React.JSX
     const r = await window.api.syncMain(rebuild);
     if (r.ok) {
       setStatus(r.value.status);
-      setNote(`${r.value.created ? 'awe_world created. ' : ''}${r.value.applied.length} update files applied.${r.value.failed.length ? ` ${r.value.failed.length} failed and were skipped: ${r.value.failed.map((f) => f.name).join(', ')}.` : ''}`);
+      setNote(`${r.value.created ? 'awe_world created. ' : ''}${r.value.seeded.length ? `${r.value.seeded.reduce((n, t) => n + t.rows, 0)} rows seeded from the live world. ` : ''}${r.value.applied.length} update files applied.${r.value.failed.length ? ` ${r.value.failed.length} failed and were skipped: ${r.value.failed.map((f) => f.name).join(', ')}.` : ''}`);
       await store.getState().adoptConnection(r.value.connect);
       await store.getState().loadProfiles();
     } else setError(r.error.message);

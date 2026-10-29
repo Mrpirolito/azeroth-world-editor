@@ -118,6 +118,48 @@ export async function ensureWorldFromBase(db: SyncDb, run: Runner, settings: Pic
   return true;
 }
 
+/** Tables the seed never copies: the update bookkeeping of the target */
+export const SEED_SKIP = new Set(['updates', 'updates_include']);
+
+/** One INSERT IGNORE copying the columns both databases have; null when nothing is shared or the table is skipped */
+export function seedStatement(seed: string, target: string, table: string, columns: readonly string[]): string | null {
+  if (SEED_SKIP.has(table.toLowerCase()) || columns.length === 0) return null;
+  const cols = columns.map(q).join(', ');
+  return `INSERT IGNORE INTO ${q(target)}.${q(table)} (${cols}) SELECT ${cols} FROM ${q(seed)}.${q(table)}`;
+}
+
+/**
+ * Copies into the freshly built `target` every row of `seed` (the live world, which holds imports the repo does not)
+ * that is missing there, table by table over the columns both share. Only reads `seed`. Returns the rows added per table.
+ */
+export async function seedWorld(db: SyncDb, seed: string, target: string): Promise<{ table: string; rows: number }[]> {
+  const shared = await db.query<{ t: string; c: string }>(
+    `SELECT s.TABLE_NAME AS t, s.COLUMN_NAME AS c FROM information_schema.COLUMNS s
+     JOIN information_schema.COLUMNS d ON d.TABLE_SCHEMA = ? AND d.TABLE_NAME = s.TABLE_NAME AND d.COLUMN_NAME = s.COLUMN_NAME AND d.EXTRA NOT LIKE '%GENERATED%'
+     JOIN information_schema.TABLES st ON st.TABLE_SCHEMA = s.TABLE_SCHEMA AND st.TABLE_NAME = s.TABLE_NAME AND st.TABLE_TYPE = 'BASE TABLE'
+     JOIN information_schema.TABLES dt ON dt.TABLE_SCHEMA = d.TABLE_SCHEMA AND dt.TABLE_NAME = d.TABLE_NAME AND dt.TABLE_TYPE = 'BASE TABLE'
+     WHERE s.TABLE_SCHEMA = ? AND s.EXTRA NOT LIKE '%GENERATED%' ORDER BY s.TABLE_NAME, s.ORDINAL_POSITION`,
+    [target, seed],
+  );
+  const byTable = new Map<string, string[]>();
+  for (const r of shared) byTable.set(r.t, [...(byTable.get(r.t) ?? []), r.c]);
+  const out: { table: string; rows: number }[] = [];
+  await db.query("SET SESSION sql_mode = '', foreign_key_checks = 0");
+  try {
+    for (const [table, cols] of byTable) {
+      const sql = seedStatement(seed, target, table, cols);
+      if (!sql) continue;
+      await db.query(sql);
+      const [n] = await db.query<{ n: number | string }>('SELECT ROW_COUNT() AS n');
+      const rows = Number(n?.n ?? 0);
+      if (rows > 0) out.push({ table, rows });
+    }
+  } finally {
+    await db.query('SET SESSION sql_mode = DEFAULT, foreign_key_checks = 1').catch(() => undefined);
+  }
+  return out;
+}
+
 /** What `updates` records now: name to hash */
 export async function appliedUpdates(db: SyncDb, database: string): Promise<Map<string, string>> {
   await db.query(UPDATES_TABLE.replace('`updates`', `${q(database)}.\`updates\``));

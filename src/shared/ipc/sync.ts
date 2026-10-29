@@ -21,6 +21,8 @@ export interface SyncSettings {
   prHeadOwner: string;
   /** The mysql client that imports the base SQL */
   mysqlBin: string;
+  /** Database whose rows are copied into a freshly built awe_world before the updates run (the live world); empty disables it */
+  seedDb: string;
 }
 
 export interface SyncStatus {
@@ -46,6 +48,8 @@ export interface SyncResult {
   renamed: string[];
   /** Update files that failed; they were skipped, so awe_world can differ from the server where they apply */
   failed: { name: string; error: string }[];
+  /** Rows copied from the seed database when awe_world was built */
+  seeded: { table: string; rows: number }[];
   /** AWE is connected to awe_world now */
   connect: ConnectSummary;
   status: SyncStatus;

@@ -2,7 +2,7 @@ import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SyncSettings, SyncStatus } from '../../shared/ipc';
 import { gitIn, type Runner } from './git';
-import { applyPlan, cliImporter, collectUpdateFiles, ensureWorldFromBase, planFor, type SyncDb, type SyncServer } from './world-sync';
+import { applyPlan, cliImporter, collectUpdateFiles, ensureWorldFromBase, planFor, seedWorld, type SyncDb, type SyncServer } from './world-sync';
 
 /** The database AWE works in when it is aligned with main; never the user's own world database */
 export const AWE_DB = 'awe_world';
@@ -17,6 +17,7 @@ export const DEFAULT_SYNC_SETTINGS: SyncSettings = {
   prRepo: 'Conquest-of-AzerothCore/azerothcore-wotlk-coa',
   prHeadOwner: 'Mrpirolito',
   mysqlBin: 'G:/Coa/CoA-Repack/mysql/bin/mysql.exe',
+  seedDb: 'acore_world',
 };
 
 export interface KeyValue {
@@ -109,6 +110,8 @@ export interface SyncOutcome {
   applied: string[];
   renamed: string[];
   failed: { name: string; error: string }[];
+  /** Rows copied from the seed database into a freshly built awe_world, per table */
+  seeded: { table: string; rows: number }[];
 }
 
 /**
@@ -121,9 +124,10 @@ export async function syncMain(ports: MainSyncPorts, db: SyncDb, server: SyncSer
   const sha = await mainSha(ports, settings, true);
   await updateWorktree(ports, settings);
   const created = await ensureWorldFromBase(db, ports.run, settings, server, AWE_DB, rebuild);
+  const seeded = created && settings.seedDb ? await seedWorld(db, settings.seedDb, AWE_DB) : [];
   const files = await (ports.collect ?? collectUpdateFiles)(settings.worktreeDir);
   const plan = await planFor(db, AWE_DB, files);
   const { applied, renamed, failed } = await applyPlan(db, AWE_DB, plan, undefined, cliImporter(ports.run, settings.mysqlBin, server, AWE_DB), true);
   ports.kv.set(STATE_KEY, JSON.stringify({ sha, at: ports.now().toISOString() } satisfies SyncState));
-  return { sha, created, applied, renamed, failed };
+  return { sha, created, applied, renamed, failed, seeded };
 }

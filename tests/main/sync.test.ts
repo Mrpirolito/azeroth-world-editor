@@ -7,7 +7,7 @@ import { pickSource } from '../../src/main/api/sync-api';
 import type { Runner, RunResult } from '../../src/main/sync/git';
 import { DEFAULT_SYNC_SETTINGS, saveSyncSettings, syncMain, syncStatus, updateWorktree, type KeyValue, type MainSyncPorts } from '../../src/main/sync/main-sync';
 import { dryRun, preparePr, publishPr } from '../../src/main/sync/pr-export';
-import { UpdateFailedError, applyPlan, collectUpdateFiles, ensureWorldFromBase, type SyncDb } from '../../src/main/sync/world-sync';
+import { UpdateFailedError, applyPlan, collectUpdateFiles, ensureWorldFromBase, seedStatement, seedWorld, type SyncDb } from '../../src/main/sync/world-sync';
 import { planUpdates } from '../../src/core/sync/updates';
 import { openStore } from '../../src/main/store/store';
 import { createProjectSession } from '../../src/main/project/session';
@@ -158,7 +158,7 @@ describe('syncing with main', () => {
     const db = fakeDb((sql) => (sql.includes('SCHEMATA') ? [{ 1: 1 }] : []));
     const run = fakeRunner({ 'rev-parse': { stdout: `${SHA}\n` } });
     const out = await syncMain(ports(run, kv), db, { host: 'h', port: 1, user: 'u', password: 'p' });
-    expect(out).toMatchObject({ sha: SHA, created: false, applied: [] });
+    expect(out).toMatchObject({ sha: SHA, created: false, applied: [], seeded: [] });
     expect(run.calls[0]).toBe('git -C G:\\Coa\\wt-main fetch coa');
     expect((await syncStatus(ports(run, kv), false)).message).toBe('Aligned with main @ aaaaaaaa');
     const moved = fakeRunner({ 'rev-parse': { stdout: `${'b'.repeat(40)}\n` } });
@@ -261,5 +261,27 @@ describe('choosing the source database', () => {
     expect(pickSource(profiles, 3)?.id).toBe(2);
     expect(pickSource(profiles, null)?.id).toBe(2);
     expect(pickSource([profiles[2]!], null)).toBeNull();
+  });
+});
+
+describe('seeding awe_world from the live world', () => {
+  it('copies only shared quoted columns with INSERT IGNORE and skips the updates tables', () => {
+    expect(seedStatement('acore_world', 'awe_world', 'item_template', ['entry', 'name'])).toBe(
+      'INSERT IGNORE INTO `awe_world`.`item_template` (`entry`, `name`) SELECT `entry`, `name` FROM `acore_world`.`item_template`',
+    );
+    expect(seedStatement('a', 'b', 'updates', ['name'])).toBeNull();
+    expect(seedStatement('a', 'b', 'updates_include', ['path'])).toBeNull();
+    expect(seedStatement('a', 'b', 't', [])).toBeNull();
+  });
+
+  it('runs one statement per table with relaxed session settings and reports the rows added', async () => {
+    const db = fakeDb((sql) => {
+      if (sql.includes('information_schema')) return [{ t: 'creature', c: 'guid' }, { t: 'updates', c: 'name' }, { t: 'item_template', c: 'entry' }];
+      if (sql.includes('ROW_COUNT')) return [{ n: db.sql.filter((s) => s.startsWith('INSERT IGNORE')).length === 1 ? 0 : 5 }];
+      return [];
+    });
+    expect(await seedWorld(db, 'acore_world', 'awe_world')).toEqual([{ table: 'item_template', rows: 5 }]);
+    expect(db.sql[1]).toContain("sql_mode = ''");
+    expect(db.sql.some((s) => s.includes('`updates`'))).toBe(false);
   });
 });
