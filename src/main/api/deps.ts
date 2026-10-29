@@ -9,6 +9,9 @@ import type { McpController } from '../mcp/controller';
 import type { DebugController } from '../debug/controller';
 import type { UpdateController } from '../updates/controller';
 import type { WikiFetch } from '../../core/lore/wiki';
+import type { Runner } from '../sync/git';
+import type { MainSyncPorts } from '../sync/main-sync';
+import type { SyncDb, SyncServer } from '../sync/world-sync';
 
 /** Every side effect the API has, given to it so tests can run the real thing against fakes */
 export interface ApiDeps {
@@ -20,6 +23,8 @@ export interface ApiDeps {
   updates?: UpdateController;
   /** Reaches the internet, for wiki lookups; absent where the app has none (tests). */
   fetch?: WikiFetch;
+  /** Git, MySQL and the file walk behind Sync with main and Export as PR; absent where the app has none (tests). */
+  sync?: { run: Runner; openSyncDb(server: SyncServer): Promise<SyncDb> } & Pick<MainSyncPorts, 'hasCheckout' | 'collect'>;
   store: Store;
   openWorldDb(p: ProfileInput): Promise<WorldDb>;
   openDevDb(p: ProfileInput): Promise<DevDb>;

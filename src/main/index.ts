@@ -4,6 +4,8 @@ import { appendFile, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { openMysqlDevDb } from '../core/db/mysql-dev-db';
 import { openMysqlWorldDb } from '../core/db/mysql-world-db';
+import { nodeRunner } from './sync/git';
+import { openSyncDb } from './sync/world-sync';
 import { CONNECTED_CHANNEL, DEBUG_CHANGED_CHANNEL, DEBUG_REQUEST_CHANNEL, EXTERNAL_CHANGE_CHANNEL, FLUSH_DONE_CHANNEL, FLUSH_REQUEST_CHANNEL, HISTORY_CHANNEL, HOLD_EDITS_CHANNEL } from '../shared/api-methods';
 import { describeStep } from './project/step-labels';
 import { API_METHODS, channelFor, type Api } from '../shared/ipc';
@@ -138,6 +140,7 @@ function buildDeps(
     session,
     projects,
     startupProfileId,
+    sync: { run: nodeRunner, openSyncDb },
     openWorldDb: (p) => openMysqlWorldDb(p),
     openDevDb: (p) => openMysqlDevDb(p),
     fs: {
