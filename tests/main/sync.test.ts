@@ -285,3 +285,40 @@ describe('seeding awe_world from the live world', () => {
     expect(db.sql.some((s) => s.includes('`updates`'))).toBe(false);
   });
 });
+
+describe('syncMain order when awe_world is built', () => {
+  it('applies updates, then seeds, then retries the files that failed', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'awe-order-'));
+    const base = join(root, 'data', 'sql', 'base', 'db_world');
+    await mkdir(base, { recursive: true });
+    await writeFile(join(base, 'a.sql'), '-- x');
+    const upd = join(root, 'f.sql');
+    await writeFile(upd, 'SELECT 1;');
+    const kv = memory();
+    saveSyncSettings(kv, { worktreeDir: root });
+    const events: string[] = [];
+    let tries = 0;
+    const run = fakeRunner({
+      'rev-parse': { stdout: `${SHA}\n` },
+      mysql: (_a, _c) => ({}),
+    });
+    const wrapped = (async (cmd, args, opts) => {
+      if (opts?.stdinFile === upd) {
+        events.push('update');
+        if (++tries === 1) return { code: 1, stdout: '', stderr: 'dup', };
+      }
+      return run(cmd, args, opts);
+    }) as Runner;
+    const db = fakeDb((sql) => {
+      if (sql.includes('SCHEMATA')) return [];
+      if (sql.includes('information_schema.COLUMNS')) return [{ t: 'creature', c: 'guid' }];
+      if (sql.includes('ROW_COUNT')) return [{ n: 3 }];
+      if (sql.startsWith('INSERT IGNORE')) events.push('seed');
+      return [];
+    });
+    const ports: MainSyncPorts = { kv, run: wrapped, now: () => new Date(), hasCheckout: async () => true, collect: async () => [{ name: 'f.sql', path: upd, state: 'RELEASED' }] };
+    const out = await syncMain(ports, db, { host: 'h', port: 1, user: 'u', password: 'p' });
+    expect(events).toEqual(['update', 'seed', 'update']);
+    expect(out).toMatchObject({ created: true, applied: ['f.sql'], failed: [], seeded: [{ table: 'creature', rows: 3 }] });
+  });
+});

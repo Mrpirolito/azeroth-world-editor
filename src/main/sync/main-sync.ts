@@ -124,10 +124,18 @@ export async function syncMain(ports: MainSyncPorts, db: SyncDb, server: SyncSer
   const sha = await mainSha(ports, settings, true);
   await updateWorktree(ports, settings);
   const created = await ensureWorldFromBase(db, ports.run, settings, server, AWE_DB, rebuild);
-  const seeded = created && settings.seedDb ? await seedWorld(db, settings.seedDb, AWE_DB) : [];
   const files = await (ports.collect ?? collectUpdateFiles)(settings.worktreeDir);
-  const plan = await planFor(db, AWE_DB, files);
-  const { applied, renamed, failed } = await applyPlan(db, AWE_DB, plan, undefined, cliImporter(ports.run, settings.mysqlBin, server, AWE_DB), true);
+  const exec = cliImporter(ports.run, settings.mysqlBin, server, AWE_DB);
+  const first = await applyPlan(db, AWE_DB, await planFor(db, AWE_DB, files), undefined, exec, true);
+  const { renamed } = first;
+  let { applied, failed } = first;
+  const seeded = created && settings.seedDb ? await seedWorld(db, settings.seedDb, AWE_DB) : [];
+  if (seeded.length > 0 && failed.length > 0) {
+    // files that failed on live-only data get one more try now that the seed filled it in
+    const retry = await applyPlan(db, AWE_DB, await planFor(db, AWE_DB, files), undefined, exec, true);
+    applied = [...applied, ...retry.applied];
+    failed = retry.failed;
+  }
   ports.kv.set(STATE_KEY, JSON.stringify({ sha, at: ports.now().toISOString() } satisfies SyncState));
   return { sha, created, applied, renamed, failed, seeded };
 }
