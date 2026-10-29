@@ -126,10 +126,10 @@ describe('syncing with main', () => {
   it('adds the worktree the first time and moves it to main afterwards', async () => {
     const first = fakeRunner({ 'rev-parse': { stdout: `${SHA}\n` } });
     await updateWorktree(ports(first), DEFAULT_SYNC_SETTINGS);
-    expect(first.calls).toEqual([`git -C G:\\Coa\\wt-main worktree add --detach G:\\Coa\\awe-main origin/main`]);
+    expect(first.calls).toEqual([`git -C G:\\Coa\\wt-main worktree add --detach G:\\Coa\\awe-main coa/main`]);
     const again = fakeRunner({});
     await updateWorktree(ports(again, memory(), true), DEFAULT_SYNC_SETTINGS);
-    expect(again.calls).toEqual([`git -C G:\\Coa\\awe-main checkout --detach origin/main`]);
+    expect(again.calls).toEqual([`git -C G:\\Coa\\awe-main checkout --detach coa/main`]);
   });
 
   it('fetches, aligns, and then reports aligned; a moved main shows a warning', async () => {
@@ -138,7 +138,7 @@ describe('syncing with main', () => {
     const run = fakeRunner({ 'rev-parse': { stdout: `${SHA}\n` } });
     const out = await syncMain(ports(run, kv), db, 'acore_world');
     expect(out).toMatchObject({ sha: SHA, created: false, applied: [] });
-    expect(run.calls[0]).toBe('git -C G:\\Coa\\wt-main fetch origin');
+    expect(run.calls[0]).toBe('git -C G:\\Coa\\wt-main fetch coa');
     expect((await syncStatus(ports(run, kv), false)).message).toBe('Aligned with main @ aaaaaaaa');
     const moved = fakeRunner({ 'rev-parse': { stdout: `${'b'.repeat(40)}\n` } });
     const status = await syncStatus(ports(moved, kv), false);
@@ -163,13 +163,13 @@ describe('Export as PR', () => {
   const input = { title: 'Pickups', slug: 'pickups', date: '20261030', sql: 'INSERT INTO t VALUES (1);\n', ids: [], body: 'body' };
   const gitAnswers = (lint: Partial<RunResult> = {}) => ({
     'rev-parse HEAD': { stdout: 'c0ffee\n' },
-    'rev-parse origin/main': { stdout: `${SHA}\n` },
+    'rev-parse coa/main': { stdout: `${SHA}\n` },
     'ls-tree': { stdout: 'data/sql/updates/pending_db_world/rev_20261030_40_a.sql\ndata/sql/updates/pending_db_world/rev_20261030_41_a_revert.sql\n' },
     'codestyle-sql.py': lint,
   });
 
   it('refuses when awe_world is not on the current main', async () => {
-    const { ports } = await alignedPorts(fakeRunner({ ...gitAnswers(), 'rev-parse origin/main': { stdout: `${'b'.repeat(40)}\n` } }));
+    const { ports } = await alignedPorts(fakeRunner({ ...gitAnswers(), 'rev-parse coa/main': { stdout: `${'b'.repeat(40)}\n` } }));
     await expect(preparePr(ports, fakeDb(), input)).rejects.toThrow(/not aligned/);
   });
 
@@ -182,7 +182,7 @@ describe('Export as PR', () => {
     const preview = await preparePr(ports, db, input);
     expect(preview).toMatchObject({ ok: true, commit: 'c0ffee', branch: 'awe/pickups', file: 'data/sql/updates/pending_db_world/rev_20261030_42_pickups.sql' });
     expect(await readFile(join(parent, 'awe-pr-pickups', preview.file), 'utf8')).toBe(input.sql);
-    expect(run.calls).toContain(`git -C G:\\Coa\\wt-main worktree add -b awe/pickups ${join(parent, 'awe-pr-pickups')} origin/main`);
+    expect(run.calls).toContain(`git -C G:\\Coa\\wt-main worktree add -b awe/pickups ${join(parent, 'awe-pr-pickups')} coa/main`);
     expect(run.calls.some((c) => c.startsWith('python apps/codestyle/codestyle-sql.py --files data/sql/updates/pending_db_world/rev_20261030_42_pickups.sql'))).toBe(true);
     const commit = run.calls.find((c) => c.includes(' commit '))!;
     expect(commit).toContain('-m feat(DB/CoA): Pickups');

@@ -12,7 +12,7 @@ export const DEFAULT_SYNC_SETTINGS: SyncSettings = {
   worktreeDir: 'G:\\Coa\\awe-main',
   prWorktreeParent: 'G:\\Coa',
   python: 'python',
-  mainRef: 'origin/main',
+  mainRef: 'coa/main',
   forkRemote: 'fork',
   prRepo: 'Conquest-of-AzerothCore/azerothcore-wotlk-coa',
   prHeadOwner: 'Mrpirolito',
