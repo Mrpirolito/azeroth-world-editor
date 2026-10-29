@@ -19,6 +19,8 @@ export interface SyncSettings {
   prRepo: string;
   /** The owner of the fork the branch is pushed to */
   prHeadOwner: string;
+  /** The mysql client that imports the base SQL */
+  mysqlBin: string;
 }
 
 export interface SyncStatus {
@@ -75,8 +77,8 @@ export interface SyncApi {
   syncSettings(): Promise<Result<SyncSettings>>;
   syncSetSettings(patch: Partial<SyncSettings>): Promise<Result<SyncSettings>>;
   syncStatus(refresh?: boolean): Promise<Result<SyncStatus>>;
-  /** Fetches main, applies its SQL updates to awe_world (made if missing) and connects to it. */
-  syncMain(): Promise<Result<SyncResult>>;
+  /** Fetches main, applies its SQL updates to awe_world (built from the base SQL if missing or `rebuild`) and connects to it. */
+  syncMain(rebuild?: boolean): Promise<Result<SyncResult>>;
   /** Writes the project's patch into a branch of a fresh worktree from main and commits it. Nothing is pushed. */
   exportPrPrepare(input: { title: string; slug?: string }): Promise<Result<PrPreview>>;
   /** Pushes the prepared branch and opens the pull request. Refused unless `confirm` is true. */

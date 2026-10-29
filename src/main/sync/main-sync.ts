@@ -2,7 +2,7 @@ import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SyncSettings, SyncStatus } from '../../shared/ipc';
 import { gitIn, type Runner } from './git';
-import { applyPlan, collectUpdateFiles, ensureWorldCopy, planFor, type SyncDb } from './world-sync';
+import { applyPlan, collectUpdateFiles, ensureWorldFromBase, planFor, type SyncDb, type SyncServer } from './world-sync';
 
 /** The database AWE works in when it is aligned with main; never the user's own world database */
 export const AWE_DB = 'awe_world';
@@ -16,6 +16,7 @@ export const DEFAULT_SYNC_SETTINGS: SyncSettings = {
   forkRemote: 'fork',
   prRepo: 'Conquest-of-AzerothCore/azerothcore-wotlk-coa',
   prHeadOwner: 'Mrpirolito',
+  mysqlBin: 'G:/Coa/CoA-Repack/mysql/bin/mysql.exe',
 };
 
 export interface KeyValue {
@@ -110,15 +111,15 @@ export interface SyncOutcome {
 }
 
 /**
- * Sync with main: fetch, move the AWE worktree to main, make `awe_world` from the source database if it is
- * missing, then run what main's update files add, in the order the server runs them. The state (sha) is
+ * Sync with main: fetch, move the AWE worktree to main, build `awe_world` from the base SQL if it is
+ * missing (or `rebuild`), then run what main's update files add, in the order the server runs them. The state (sha) is
  * recorded only when every file ran; a failure names the file and leaves the files before it applied.
  */
-export async function syncMain(ports: MainSyncPorts, db: SyncDb, sourceDb: string): Promise<SyncOutcome> {
+export async function syncMain(ports: MainSyncPorts, db: SyncDb, server: SyncServer, rebuild = false): Promise<SyncOutcome> {
   const settings = loadSyncSettings(ports.kv);
   const sha = await mainSha(ports, settings, true);
   await updateWorktree(ports, settings);
-  const created = await ensureWorldCopy(db, sourceDb, AWE_DB);
+  const created = await ensureWorldFromBase(db, ports.run, settings, server, AWE_DB, rebuild);
   const files = await (ports.collect ?? collectUpdateFiles)(settings.worktreeDir);
   const plan = await planFor(db, AWE_DB, files);
   const { applied, renamed } = await applyPlan(db, AWE_DB, plan);

@@ -330,10 +330,10 @@ const REQUEST_SCHEMAS: Record<keyof Api, z.ZodType<unknown[]>> = {
   syncSetSettings: z.tuple([z.object({
     repoDir: z.string().min(1).max(MAX_PATH), worktreeDir: z.string().min(1).max(MAX_PATH), prWorktreeParent: z.string().min(1).max(MAX_PATH),
     python: z.string().min(1).max(MAX_PATH), mainRef: z.string().regex(/^[A-Za-z0-9_.\/-]+$/).max(200), forkRemote: z.string().regex(/^[A-Za-z0-9_.-]+$/).max(100),
-    prRepo: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/).max(200), prHeadOwner: z.string().regex(/^[A-Za-z0-9_.-]+$/).max(100),
+    prRepo: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/).max(200), prHeadOwner: z.string().regex(/^[A-Za-z0-9_.-]+$/).max(100), mysqlBin: z.string().min(1).max(MAX_PATH),
   }).partial()]),
   syncStatus: z.tuple([z.boolean().optional()]),
-  syncMain: z.tuple([]),
+  syncMain: z.tuple([z.boolean().optional()]),
   exportPrPrepare: z.tuple([z.object({ title: z.string().min(3).max(120), slug: z.string().regex(/^[a-z0-9_]{1,40}$/).optional() })]),
   exportPrPublish: z.tuple([z.object({ slug: z.string().regex(/^[a-z0-9_]{1,40}$/), confirm: z.boolean() })]),
 };

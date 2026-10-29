@@ -7,11 +7,11 @@ export const syncTools = [
     name: 'sync_main',
     title: 'Sync with the server main branch',
     description:
-      "Fetches the server repo's main, applies every SQL update it adds to the editor's own awe_world database (made from the world database on the first run; the user's own database is never written) and connects the editor to it. Stops at the first failing file and names it.",
-    input: {},
+      "Fetches the server repo's main, applies every SQL update it adds to the editor's own awe_world database (built from the repo's base SQL like a fresh install on the first run; the user's own database is never written) and connects the editor to it. Stops at the first failing file and names it.",
+    input: { rebuild: z.boolean().optional().describe('true drops awe_world and rebuilds it from the base SQL.') },
     write: false,
-    run: async (_args, ctx) => {
-      const synced = await ctx.call('syncMain');
+    run: async ({ rebuild }, ctx) => {
+      const synced = await ctx.call('syncMain', rebuild);
       if (synced.ok) ctx.notifyConnected(synced.value.connect);
       return synced;
     },

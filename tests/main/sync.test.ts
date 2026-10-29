@@ -7,7 +7,7 @@ import { pickSource } from '../../src/main/api/sync-api';
 import type { Runner, RunResult } from '../../src/main/sync/git';
 import { DEFAULT_SYNC_SETTINGS, saveSyncSettings, syncMain, syncStatus, updateWorktree, type KeyValue, type MainSyncPorts } from '../../src/main/sync/main-sync';
 import { dryRun, preparePr, publishPr } from '../../src/main/sync/pr-export';
-import { UpdateFailedError, applyPlan, collectUpdateFiles, ensureWorldCopy, type SyncDb } from '../../src/main/sync/world-sync';
+import { UpdateFailedError, applyPlan, collectUpdateFiles, ensureWorldFromBase, type SyncDb } from '../../src/main/sync/world-sync';
 import { planUpdates } from '../../src/core/sync/updates';
 import { openStore } from '../../src/main/store/store';
 import { createProjectSession } from '../../src/main/project/session';
@@ -96,27 +96,48 @@ describe('applying updates', () => {
   });
 });
 
-describe('the awe_world copy', () => {
-  it('does nothing when it exists, and refuses to copy a database onto itself', async () => {
-    const db = fakeDb((sql) => (sql.includes('SCHEMATA') ? [{ 1: 1 }] : []));
-    expect(await ensureWorldCopy(db, 'acore_world', 'awe_world')).toBe(false);
-    await expect(ensureWorldCopy(db, 'awe_world', 'awe_world')).rejects.toThrow();
+describe('building awe_world from the base SQL', () => {
+  const server = { host: 'h', port: 3307, user: 'u', password: 'secret-pw' };
+  const baseDir = async (): Promise<string> => {
+    const root = await mkdtemp(join(tmpdir(), 'awe-base-'));
+    const dir = join(root, 'data', 'sql', 'base', 'db_world');
+    await mkdir(dir, { recursive: true });
+    for (const n of ['b.sql', 'a.sql', 'c.sql', 'notes.md']) await writeFile(join(dir, n), '-- x');
+    return root;
+  };
+  const absent = (): unknown[] => [];
+  const ok = { code: 0, stdout: '', stderr: '' };
+
+  it('does nothing when it exists, unless rebuilding', async () => {
+    const settings = { worktreeDir: await baseDir(), mysqlBin: 'mysql' };
+    const present = (sql: string): unknown[] => (sql.includes('SCHEMATA') ? [{ 1: 1 }] : []);
+    const run = fakeRunner({});
+    expect(await ensureWorldFromBase(fakeDb(present), run, settings, server, 'awe_world')).toBe(false);
+    expect(run.calls).toEqual([]);
+    const again = fakeDb(present);
+    expect(await ensureWorldFromBase(again, run, settings, server, 'awe_world', true)).toBe(true);
+    expect(again.sql.slice(1)).toEqual(['DROP DATABASE IF EXISTS `awe_world`', 'CREATE DATABASE `awe_world` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci']);
+    expect(run.calls).toHaveLength(3);
   });
 
-  it('creates the database and copies every table, dropping it again when a copy fails', async () => {
-    const answer = (sql: string, fail: boolean): unknown[] | Error => {
-      if (sql.includes('WHERE SCHEMA_NAME') && sql.includes('SELECT 1')) return [];
-      if (sql.includes('DEFAULT_CHARACTER_SET_NAME')) return [{ cs: 'utf8mb4', co: 'utf8mb4_unicode_ci' }];
-      if (sql.includes('information_schema.TABLES')) return [{ n: 't1' }, { n: 't2' }];
-      if (fail && sql.startsWith('INSERT INTO `awe_world`.`t2`')) return new Error('disk full');
-      return [];
+  it('imports the base files in name order, with the password only in the environment', async () => {
+    const seen: { args: readonly string[]; env?: Record<string, string>; stdinFile?: string }[] = [];
+    const run: Runner = async (_c, args, opts) => {
+      seen.push({ args, env: opts?.env, stdinFile: opts?.stdinFile });
+      return ok;
     };
-    const good = fakeDb((s) => answer(s, false));
-    expect(await ensureWorldCopy(good, 'acore_world', 'awe_world')).toBe(true);
-    expect(good.sql.filter((s) => s.startsWith('INSERT INTO'))).toEqual(['INSERT INTO `awe_world`.`t1` SELECT * FROM `acore_world`.`t1`', 'INSERT INTO `awe_world`.`t2` SELECT * FROM `acore_world`.`t2`']);
-    const bad = fakeDb((s) => answer(s, true));
-    await expect(ensureWorldCopy(bad, 'acore_world', 'awe_world')).rejects.toThrow('disk full');
-    expect(bad.sql.at(-1)).toBe('DROP DATABASE IF EXISTS `awe_world`');
+    expect(await ensureWorldFromBase(fakeDb(absent), run, { worktreeDir: await baseDir(), mysqlBin: 'mysql' }, server, 'awe_world')).toBe(true);
+    expect(seen.map((x) => x.stdinFile?.split(/[\\/]/).pop())).toEqual(['a.sql', 'b.sql', 'c.sql']);
+    expect(seen.every((x) => x.env?.MYSQL_PWD === 'secret-pw')).toBe(true);
+    expect(JSON.stringify(seen.map((x) => x.args))).not.toContain('secret-pw');
+    expect(seen[0]!.args).toEqual(['--host=h', '--port=3307', '--user=u', '--default-character-set=utf8mb4', '--max-allowed-packet=1G', 'awe_world']);
+  });
+
+  it('stops at the first failing file and drops the database', async () => {
+    const run: Runner = async (_c, _a, opts) => (opts?.stdinFile?.endsWith('b.sql') ? { code: 1, stdout: '', stderr: 'ERROR 1064\n' } : ok);
+    const db = fakeDb(absent);
+    await expect(ensureWorldFromBase(db, run, { worktreeDir: await baseDir(), mysqlBin: 'mysql' }, server, 'awe_world')).rejects.toThrow('b.sql: ERROR 1064');
+    expect(db.sql.at(-1)).toBe('DROP DATABASE IF EXISTS `awe_world`');
   });
 });
 
@@ -136,7 +157,7 @@ describe('syncing with main', () => {
     const kv = memory();
     const db = fakeDb((sql) => (sql.includes('SCHEMATA') ? [{ 1: 1 }] : []));
     const run = fakeRunner({ 'rev-parse': { stdout: `${SHA}\n` } });
-    const out = await syncMain(ports(run, kv), db, 'acore_world');
+    const out = await syncMain(ports(run, kv), db, { host: 'h', port: 1, user: 'u', password: 'p' });
     expect(out).toMatchObject({ sha: SHA, created: false, applied: [] });
     expect(run.calls[0]).toBe('git -C G:\\Coa\\wt-main fetch coa');
     expect((await syncStatus(ports(run, kv), false)).message).toBe('Aligned with main @ aaaaaaaa');

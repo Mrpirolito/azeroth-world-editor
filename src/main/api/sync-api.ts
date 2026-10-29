@@ -18,7 +18,7 @@ import type { Services } from './services';
 
 export const AWE_PROFILE = 'AWE aligned with main';
 
-/** The profile the copy is made from: the open connection when it is not awe_world itself, else the world profile used last */
+/** The profile whose server hosts awe_world: the open connection when it is not awe_world itself, else the world profile used last */
 export function pickSource(profiles: readonly ProfileRecord[], currentId: number | null): ProfileRecord | null {
   const real = profiles.filter((p) => p.role === 'world' && p.database !== AWE_DB);
   const current = real.find((p) => p.id === currentId);
@@ -55,19 +55,19 @@ export function createSyncApi(s: Services, deps: ApiDeps, parts: { connect: Conn
     syncSetSettings: (patch) => run(async () => saveSyncSettings(deps.store.settings, patch)),
     syncStatus: (refresh) => run(async () => syncStatus(ports(), refresh === true)),
 
-    syncMain: () =>
+    syncMain: (rebuild) =>
       run(async () => {
         const p = ports();
-        const source = pickSource(deps.store.profiles.list(), conn.current()?.profileId ?? null);
-        if (!source) throw fail('NO_DEV_PROFILE', 'Save a connection to your world database first: awe_world is copied from it.');
+        const base = pickSource(deps.store.profiles.list(), conn.current()?.profileId ?? null);
+        if (!base) throw fail('NO_DEV_PROFILE', 'Save a connection to your world database first: its server hosts awe_world.');
+        const full = deps.store.profiles.getWithPassword(base.id);
         let outcome;
         try {
-          outcome = await withDb(source.id, (db) => syncMain(p, db, source.database));
+          outcome = await withDb(base.id, (db) => syncMain(p, db, server(base.id), rebuild === true));
         } catch (e) {
           if (e instanceof UpdateFailedError) throw fail('QUERY', `Sync stopped at ${e.message}`);
           throw e;
         }
-        const full = deps.store.profiles.getWithPassword(source.id);
         const existing = deps.store.profiles.list().find((x) => x.name === AWE_PROFILE);
         const saved = deps.store.profiles.save({
           id: existing?.id, name: AWE_PROFILE, role: 'world', host: full.host, port: full.port, user: full.user, database: AWE_DB,

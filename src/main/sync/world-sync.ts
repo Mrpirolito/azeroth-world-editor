@@ -1,6 +1,8 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import mysql from 'mysql2/promise';
+import type { SyncSettings } from '../../shared/ipc';
+import type { Runner } from './git';
 import { STATE_OF_DIR, hashOf, planUpdates, type UpdateFile, type UpdatePlan } from '../../core/sync/updates';
 
 /** AzerothCore walks included folders to this depth */
@@ -84,25 +86,25 @@ const UPDATES_TABLE = `CREATE TABLE IF NOT EXISTS \`updates\` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`;
 
 /**
- * Creates `target` from `source` when it is missing: every base table, structure and rows, on the same
- * server (so nothing travels through this process). A copy that fails halfway is dropped, so the next
- * sync starts again instead of trusting half a database. Returns whether it was created now.
+ * Builds `target` like a fresh AzerothCore install: the database is created and every file of
+ * data/sql/base/db_world is imported with the MySQL CLI (the files are too big for mysql2). With `rebuild` an
+ * existing database is dropped first. A failed import drops the database, so the next sync starts again.
+ * The password reaches the CLI only through its environment. Returns whether it was built now.
  */
-export async function ensureWorldCopy(db: SyncDb, source: string, target: string): Promise<boolean> {
-  if (source === target) throw new Error('The source and the sync database are the same database.');
-  const exists = await db.query('SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?', [target]);
-  if (exists.length > 0) return false;
-  const [charset] = await db.query<{ cs: string; co: string }>('SELECT DEFAULT_CHARACTER_SET_NAME AS cs, DEFAULT_COLLATION_NAME AS co FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?', [source]);
-  if (!charset) throw new Error(`The source database ${source} does not exist.`);
-  await db.query(`CREATE DATABASE ${q(target)} DEFAULT CHARACTER SET ${charset.cs} COLLATE ${charset.co}`);
+export async function ensureWorldFromBase(db: SyncDb, run: Runner, settings: Pick<SyncSettings, 'worktreeDir' | 'mysqlBin'>, server: SyncServer, target: string, rebuild = false): Promise<boolean> {
+  const exists = (await db.query('SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?', [target])).length > 0;
+  if (exists && !rebuild) return false;
+  const dir = join(settings.worktreeDir, 'data', 'sql', 'base', 'db_world');
+  const files = (await readdir(dir)).filter((n) => n.toLowerCase().endsWith('.sql')).sort();
+  if (files.length === 0) throw new Error(`No base SQL files in ${dir}.`);
+  await db.query(`DROP DATABASE IF EXISTS ${q(target)}`);
+  await db.query(`CREATE DATABASE ${q(target)} DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  const args = [`--host=${server.host}`, `--port=${server.port}`, `--user=${server.user}`, '--default-character-set=utf8mb4', '--max-allowed-packet=1G', target];
   try {
-    const tables = await db.query<{ n: string }>("SELECT TABLE_NAME AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME", [source]);
-    await db.query("SET SESSION sql_mode = '', foreign_key_checks = 0, unique_checks = 0");
-    for (const { n } of tables) {
-      await db.query(`CREATE TABLE ${q(target)}.${q(n)} LIKE ${q(source)}.${q(n)}`);
-      await db.query(`INSERT INTO ${q(target)}.${q(n)} SELECT * FROM ${q(source)}.${q(n)}`);
+    for (const name of files) {
+      const r = await run(settings.mysqlBin, args, { env: { MYSQL_PWD: server.password }, stdinFile: join(dir, name) });
+      if (r.code !== 0) throw new Error(`${name}: ${(r.stderr || r.stdout).trim()}`);
     }
-    await db.query('SET SESSION sql_mode = DEFAULT, foreign_key_checks = 1, unique_checks = 1');
   } catch (e) {
     await db.query(`DROP DATABASE IF EXISTS ${q(target)}`).catch(() => undefined);
     throw e;

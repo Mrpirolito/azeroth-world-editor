@@ -6,6 +6,7 @@ const FIELDS: [keyof SyncSettings, string][] = [
   ['repoDir', 'Server repo'],
   ['worktreeDir', 'AWE worktree (kept on main)'],
   ['prWorktreeParent', 'Folder for pull request worktrees'],
+  ['mysqlBin', 'mysql client (imports the base SQL)'],
 ];
 
 /** Aligns the editor with the server's main branch: awe_world gets main's SQL updates and the editor connects to it. */
@@ -32,13 +33,13 @@ export function SyncSection({ store, setBusy }: SettingsSectionProps): React.JSX
     else setError(r.error.message);
   };
 
-  const sync = async (): Promise<void> => {
+  const sync = async (rebuild = false): Promise<void> => {
     setWorking(true);
     setBusy(true);
     setError(null);
     setNote(null);
     await save();
-    const r = await window.api.syncMain();
+    const r = await window.api.syncMain(rebuild);
     if (r.ok) {
       setStatus(r.value.status);
       setNote(`${r.value.created ? 'awe_world created. ' : ''}${r.value.applied.length} update files applied.`);
@@ -67,6 +68,9 @@ export function SyncSection({ store, setBusy }: SettingsSectionProps): React.JSX
       <div>
         <button type="button" className="btn btn--primary" disabled={working || settings === null} onClick={() => void sync()}>
           {working ? 'Syncing…' : 'Sync with main'}
+        </button>
+        <button type="button" className="btn" disabled={working || settings === null} onClick={() => void sync(true)}>
+          Rebuild from main
         </button>
         <button type="button" className="btn" disabled={working} onClick={() => void window.api.syncStatus(true).then((r) => (r.ok ? setStatus(r.value) : setError(r.error.message)))}>
           Check for changes
