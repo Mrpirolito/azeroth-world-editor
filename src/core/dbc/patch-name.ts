@@ -1,4 +1,4 @@
-import { archiveOrder } from '../client/client-files';
+import { archiveOrder } from '../client/archive-order';
 
 /** The client patch archive's default name: it loads after every `patch-C…` the Ascension and CoA clients ship up to `patch-CZZ` */
 export const DEFAULT_PATCH_NAME = 'patch-CZZZ.MPQ';
