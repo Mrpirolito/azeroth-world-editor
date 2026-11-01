@@ -66,6 +66,17 @@ export async function dryRun(db: SyncDb, sql: string): Promise<PrCheck> {
   }
 }
 
+/** Spell ids a patch claims must not be rows of awe_world.spell_dbc (main's own); a world without the table has none */
+export async function spellIdsFree(db: SyncDb, ids: readonly string[]): Promise<PrCheck> {
+  const name = 'Spell ids are free in awe_world.spell_dbc';
+  try {
+    const rows = await db.query<{ ID: number | string }>(`SELECT \`ID\` FROM \`${AWE_DB}\`.\`spell_dbc\` WHERE \`ID\` IN (${ids.join(',')})`);
+    return check(name, rows.map((r) => `Spell id ${String(r.ID)} is already a row of spell_dbc in awe_world`));
+  } catch {
+    return check(name, [], ['spell_dbc is not in awe_world; the spell ids were only checked against the files of main.']);
+  }
+}
+
 const pathExists = (p: string): Promise<boolean> => access(p).then(() => true, () => false);
 
 /**
@@ -85,6 +96,8 @@ export async function preparePr(ports: MainSyncPorts, db: SyncDb, input: PrInput
   checks.push(await dryRun(db, input.sql));
   const found = await idCollisions(input.ids, gitIdSearch(ports.run, s));
   checks.push(check('No id is already used in main', found.errors, found.warnings));
+  const spellIds = input.ids.filter((u) => u.table === 'spell_dbc' && /^\d+$/.test(u.id)).map((u) => u.id);
+  if (spellIds.length > 0) checks.push(await spellIdsFree(db, spellIds));
 
   const branch = `awe/${input.slug}`;
   const worktree = join(s.prWorktreeParent, `awe-pr-${input.slug}`);

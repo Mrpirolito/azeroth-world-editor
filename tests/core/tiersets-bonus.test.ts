@@ -6,6 +6,7 @@ import { blankSpell, effectOf, effectRange, spellNum, spellText, withSpell } fro
 import { applyTierSet, removeTierSet, settleBonuses } from '../../src/core/tiersets/apply';
 import { bonusPending, bonusSlots, bonusTooltip, buildBonusSpell, pendingNotes, type Bonus, type BonusEnv, type BonusTemplate } from '../../src/core/tiersets/bonus';
 import { parseBonusText, resolveBonus } from '../../src/core/tiersets/bonus-text';
+import { tierSetIds } from '../../src/core/tiersets/ids';
 import { newTierSet, PIECES, type TierSet } from '../../src/core/tiersets/model';
 import { buildItemSet, setIssues } from '../../src/core/tiersets/rows';
 
@@ -229,5 +230,18 @@ describe('bonus text', () => {
     const out = read('Increases the damage of Moonblast by 10%.');
     expect(out.template).toMatchObject({ kind: 'damagePct', spells: [], value: 10 });
     expect(out.notes[0]).toContain('Moonblast');
+  });
+});
+
+describe('ids a tier set claims for the PR check', () => {
+  it('lists bonus spells, items, the item set and new looks once', () => {
+    const set = savedSet([bonus({ kind: 'healingPct', value: 5 }, 2, 90001), bonus({ kind: 'pending', reason: 'x' }, 4, 0)]);
+    set.pieces.head.look = { kind: 'new', baseDisplayId: 1, displayId: 80002, textures: {}, model: false, icon: '' };
+    const ids = tierSetIds([set]);
+    expect(ids).toContainEqual({ table: 'spell_dbc', id: '90001' });
+    expect(ids.filter((i) => i.table === 'spell_dbc')).toHaveLength(1);
+    expect(ids).toContainEqual({ table: 'item_template', id: '900000' });
+    expect(ids).toContainEqual({ table: 'ItemSet.dbc', id: '7000' });
+    expect(ids).toContainEqual({ table: 'ItemDisplayInfo.dbc', id: '80002' });
   });
 });

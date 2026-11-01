@@ -212,6 +212,17 @@ describe('Export as PR', () => {
     expect(run.calls.some((c) => c.includes('push'))).toBe(false);
   });
 
+  it('checks tier set spell ids against awe_world.spell_dbc and fails on a row', async () => {
+    const { ports } = await alignedPorts(fakeRunner(gitAnswers()));
+    const ids = [{ table: 'spell_dbc', id: '90001' }, { table: 'spell_dbc', id: '90002' }];
+    const clash = await preparePr(ports, fakeDb((sql) => (sql.includes('FROM `awe_world`.`spell_dbc`') ? [{ ID: 90002 }] : [])), { ...input, ids });
+    const check = clash.checks.find((c) => c.name.startsWith('Spell ids are free'))!;
+    expect(check.errors).toEqual(['Spell id 90002 is already a row of spell_dbc in awe_world']);
+    expect(clash.ok).toBe(false);
+    const free = await preparePr(ports, fakeDb(), { ...input, ids });
+    expect(free.checks.find((c) => c.name.startsWith('Spell ids are free'))!.ok).toBe(true);
+  });
+
   it('fails the check and commits nothing when the lint fails', async () => {
     const run = fakeRunner(gitAnswers({ code: 1, stdout: 'bad style' }));
     const { ports, parent } = await alignedPorts(run);
