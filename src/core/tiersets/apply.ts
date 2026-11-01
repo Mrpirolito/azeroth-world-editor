@@ -2,6 +2,9 @@ import { withRecord, withoutRecord } from '../dbc/edits';
 import type { DbcValue } from '../game/dbc-file';
 import type { ProjectEntities } from '../entities/model';
 import { withSet } from '../tables/rowset';
+import type { RowSet } from '../tables/types';
+import { SPELL_FILE_NAME } from '../spells/model';
+import { bonusPending, buildBonusSpell, NO_SPELLS, type BonusEnv } from './bonus';
 import { PIECES, REGIONS, type ClientFile, type TierSet } from './model';
 import { buildItem, buildItemDbc, buildItemSet, cloneDisplay } from './rows';
 import { cleanName, modelPaths, texturePath } from './textures';
@@ -27,12 +30,45 @@ export function expectedPaths(set: TierSet): Set<string> {
 /** Whether a client file belongs to a set (its names start with CoA_<Set>_) */
 export const ownedBy = (file: ClientFile, set: string): boolean => file.paths.some((p) => p.includes(`CoA_${cleanName(set)}_`));
 
+const PROC_TABLE = 'spell_proc';
+
+/**
+ * The set with every bonus settled: a bonus that cannot become a spell has no spell id, one that can keeps the id it has
+ * and takes the next of `alloc` when it has none (so saving again never moves a spell).
+ */
+export function settleBonuses(set: TierSet, env: BonusEnv, alloc: (count: number) => number[]): TierSet {
+  const next = structuredClone(set);
+  const open: number[] = [];
+  next.bonuses.forEach((b, i) => {
+    if (bonusPending(b, env) !== null) b.spellId = 0;
+    else if (b.spellId === 0) open.push(i);
+  });
+  alloc(open.length).forEach((id, n) => { next.bonuses[open[n]!]!.spellId = id; });
+  return next;
+}
+
+/** The spell records and proc rows of a set's bonuses laid into the edits and row sheets; the spells `prev` made that `set` no longer has are taken out */
+function withBonusSpells(dbcEdits: ProjectEntities['dbcEdits'], rowsets: readonly RowSet[], set: TierSet, prev: TierSet | undefined, env: BonusEnv): { dbcEdits: ProjectEntities['dbcEdits']; rowsets: RowSet[] } {
+  const ids = [...set.bonuses.map((b) => b.spellId), ...(prev?.bonuses ?? []).map((b) => b.spellId)].filter((id) => id > 0);
+  let edits = dbcEdits;
+  let sheets = rowsets.filter((s) => !(s.table === PROC_TABLE && ids.includes(Number(s.scope.SpellId))));
+  for (const id of ids) edits = withoutRecord(edits, SPELL_FILE_NAME, id);
+  for (const b of set.bonuses) {
+    if (b.spellId <= 0) continue;
+    const built = buildBonusSpell(set.name, b, b.spellId, env);
+    if ('pending' in built) continue;
+    edits = withRecord(edits, SPELL_FILE_NAME, b.spellId, built.record, null);
+    if (built.proc) sheets = withSet(sheets, { table: PROC_TABLE, scope: { SpellId: String(b.spellId) }, original: [], rows: [built.proc] });
+  }
+  return { dbcEdits: edits, rowsets: sheets };
+}
+
 /**
  * The project with a saved tier set in it: its definition, its five items and their client rows, its ItemSet record, a
  * display record for every new look, and no file of its own that no look uses any more. `set` carries every id already;
  * `bases` has the records the new looks are copied from. Saving again replaces what the earlier save made.
  */
-export function applyTierSet(store: ProjectEntities, set: TierSet, prev: TierSet | undefined, bases: ReadonlyMap<number, readonly DbcValue[]>): ProjectEntities {
+export function applyTierSet(store: ProjectEntities, set: TierSet, prev: TierSet | undefined, bases: ReadonlyMap<number, readonly DbcValue[]>, env: BonusEnv = NO_SPELLS): ProjectEntities {
   const entries = new Set([...PIECES.map((k) => set.pieces[k].entry), ...(prev ? PIECES.map((k) => prev.pieces[k].entry) : [])]);
   const items = [...store.items.filter((i) => !entries.has(i.entry)), ...PIECES.map((k) => buildItem(set, k, set.itemSetId))];
 
@@ -60,6 +96,7 @@ export function applyTierSet(store: ProjectEntities, set: TierSet, prev: TierSet
     if (prev.itemSetId !== set.itemSetId) dbcEdits = withoutRecord(dbcEdits, ITEMSET_FILE, prev.itemSetId);
   }
   dbcEdits = withRecord(dbcEdits, ITEMSET_FILE, set.itemSetId, buildItemSet(set, set.itemSetId), null);
+  ({ dbcEdits, rowsets } = withBonusSpells(dbcEdits, rowsets, set, prev, env));
 
   const wanted = expectedPaths(set);
   const clientFiles = (store.clientFiles ?? []).filter((f) => !ownedBy(f, set.name) || f.paths.some((p) => wanted.has(p)));
@@ -78,7 +115,9 @@ export function removeTierSet(store: ProjectEntities, set: TierSet): ProjectEnti
     if (look.kind === 'new' && look.displayId > 0) dbcEdits = withoutRecord(dbcEdits, DISPLAY_FILE, look.displayId);
   }
   if (set.itemSetId > 0) dbcEdits = withoutRecord(dbcEdits, ITEMSET_FILE, set.itemSetId);
-  const rowsets = (store.rowsets ?? []).filter((s) => !(s.table === 'item_dbc' && entries.has(Number(s.scope.ID))));
+  const kept = (store.rowsets ?? []).filter((s) => !(s.table === 'item_dbc' && entries.has(Number(s.scope.ID))));
+  const { dbcEdits: edits, rowsets } = withBonusSpells(dbcEdits, kept, { ...set, bonuses: [] }, set, NO_SPELLS);
+  dbcEdits = edits;
   const clientFiles = (store.clientFiles ?? []).filter((f) => !ownedBy(f, set.name));
   const tierSets = (store.tierSets ?? []).filter((t) => t.name.toLowerCase() !== set.name.toLowerCase());
   const { rowsets: _r, dbcEdits: _d, clientFiles: _c, tierSets: _t, ...rest } = store;

@@ -5,6 +5,7 @@ import type { SetIssue } from '@shared/ipc';
 import { useApi } from '../state/names';
 import { useProjectEntities } from '../state/project-entities';
 import { Num } from '../spells/fields';
+import { BonusEditor } from './BonusEditor';
 import { PieceEditor } from './PieceEditor';
 import './tiersets.css';
 
@@ -140,6 +141,7 @@ export function TierSetsPanel(): React.JSX.Element {
               {PIECES.map((k) => <button key={k} type="button" aria-current={piece === k} onClick={() => setPiece(k)}>{PIECE_INFO[k].label}</button>)}
             </nav>
             <PieceEditor set={draft} saved={saved} piece={piece} onChange={(p) => setDraft({ ...draft, pieces: { ...draft.pieces, [piece]: p } })} onFileStored={() => void reload()} />
+            <BonusEditor bonuses={draft.bonuses} onChange={(bonuses) => setDraft({ ...draft, bonuses })} />
             <div className="tier-row">
               <button type="button" className="btn btn--primary" disabled={busy || !api} onClick={save}>Save set</button>
               {saved && <button type="button" className="btn" disabled={busy || !api} onClick={remove}>Delete set</button>}

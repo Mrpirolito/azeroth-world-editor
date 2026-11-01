@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { bonusSchema } from './bonus';
 
 /** A tier set: five armor pieces of one class, and everything the server and the client need to know about them */
 
@@ -101,6 +102,8 @@ export const tierSetSchema = z.object({
   difficulty: z.string().max(40),
   /** The ItemSet.dbc id (0 until saved) */
   itemSetId: int.min(0),
+  /** The set bonuses (up to the 8 slots of ItemSet.dbc) */
+  bonuses: z.array(bonusSchema).max(8).default([]),
   pieces: z.object({ head: pieceSchema, shoulders: pieceSchema, chest: pieceSchema, hands: pieceSchema, legs: pieceSchema }),
 });
 export type TierSet = z.infer<typeof tierSetSchema>;
@@ -118,7 +121,7 @@ export function emptyPiece(set: string, piece: PieceKey): Piece {
 export function newTierSet(name: string, classId: number, armorType: ArmorType): TierSet {
   const piece = (k: PieceKey): Piece => emptyPiece(name, k);
   return {
-    name, classId, armorType, itemLevel: 213, requiredLevel: 80, quality: 'epic', raid: '', difficulty: '', itemSetId: 0,
+    name, classId, armorType, itemLevel: 213, requiredLevel: 80, quality: 'epic', raid: '', difficulty: '', itemSetId: 0, bonuses: [],
     pieces: { head: piece('head'), shoulders: piece('shoulders'), chest: piece('chest'), hands: piece('hands'), legs: piece('legs') },
   };
 }

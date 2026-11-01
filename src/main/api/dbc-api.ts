@@ -12,6 +12,7 @@ import { spellIssues } from '../../core/spells/validate';
 import type { Issue } from '../../core/validate/validate';
 import { hasWorldChanges } from '../../core/world/layer';
 import type { ClientPatchResult, DbcApi, DbcRowView, ExportApi } from '../../shared/ipc';
+import { pendingNotes } from '../../core/tiersets/bonus';
 import { clientItemPatchWarning } from '../../core/tiersets/rows';
 import { PIECES } from '../../core/tiersets/model';
 import { buildMpqArchive } from '../mpq-writer';
@@ -420,6 +421,7 @@ export function createDbcApi(s: Services, exportSql: ExportApi['exportProject'])
 
         const tierWarning = clientItemPatchWarning((projectEntities().tierSets ?? []).flatMap((t) => PIECES.map((k) => t.pieces[k].entry)));
         if (tierWarning) notes.push(tierWarning);
+        notes.push(...pendingNotes(projectEntities().tierSets ?? []));
         let sql: ClientPatchResult['sql'] = null;
         if (sqlNeeded) {
           const out = await exportSql();

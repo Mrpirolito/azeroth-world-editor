@@ -181,6 +181,7 @@ export function makeMockApi(overrides: Partial<Record<keyof Api, (...args: any[]
     tierSetDelete: vi.fn(async () => okv(true as const)),
     tierSetFile: vi.fn(async () => okv({ paths: [] })),
     tierSetLooks: vi.fn(async () => okv({ looks: [] })),
+    tierSetBonusDraft: vi.fn(async () => okv({ template: { kind: 'pending', reason: '' }, spellNames: [], notes: [] })),
     dbcSetRecord: vi.fn(async (_file: string, values: unknown[]) => okv({ id: Number(values[0]), issues: [] })),
     dbcRemoveRecord: vi.fn(async () => okv(true as const)),
     spellClone: vi.fn(async (_base: number, id?: number) => okv({ id: id ?? 1, issues: [] })),

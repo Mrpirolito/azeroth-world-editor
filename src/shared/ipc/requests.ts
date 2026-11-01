@@ -349,6 +349,7 @@ const REQUEST_SCHEMAS: Record<keyof Api, z.ZodType<unknown[]>> = {
     z.string().max(40_000_000),
   ]),
   tierSetLooks: z.tuple([z.enum(PIECES), z.string().max(100)]),
+  tierSetBonusDraft: z.tuple([z.string().min(1).max(500)]),
 };
 
 /**

@@ -2,6 +2,7 @@ import type { DbcValue } from '../game/dbc-file';
 import { fieldIndex, layoutOf } from '../game/dbc-formats';
 import { newItem, type CustomItem } from '../entities/model';
 import type { Row } from '../tables/types';
+import { bonusSlots, MAX_BONUSES } from './bonus';
 import { statBudget } from './budget';
 import { ARMOR_TYPES, classMask, PIECES, PIECE_INFO, REGIONS, type Piece, type PieceKey, type Suffix, type TierSet } from './model';
 import { modelNames, textureBase } from './textures';
@@ -60,7 +61,7 @@ export function buildItemDbc(set: TierSet, key: PieceKey): Row {
   };
 }
 
-/** The `ItemSet.dbc` record: the name and the five items; the bonus spells and thresholds stay empty (phase 2) */
+/** The `ItemSet.dbc` record: the name, the five items and the bonus spells with the pieces each needs */
 export function buildItemSet(set: TierSet, itemSetId: number): DbcValue[] {
   const fields = layoutOf('ItemSet.dbc')!.fields;
   const values: DbcValue[] = fields.map((f) => (f.kind === 's' ? '' : 0));
@@ -68,6 +69,9 @@ export function buildItemSet(set: TierSet, itemSetId: number): DbcValue[] {
   values[fieldIndex(fields, 'Name')] = set.name;
   const first = fieldIndex(fields, 'ItemID1');
   PIECES.forEach((key, i) => { values[first + i] = set.pieces[key].entry; });
+  const spell = fieldIndex(fields, 'SetSpellID1');
+  const threshold = fieldIndex(fields, 'SetThreshold1');
+  bonusSlots(set.bonuses).forEach((b, i) => { values[spell + i] = b.spellId; values[threshold + i] = b.threshold; });
   return values;
 }
 
@@ -95,6 +99,16 @@ export function setIssues(set: TierSet): SetIssue[] {
     const budget = statBudget({ itemLevel: set.itemLevel, quality: set.quality, piece: key });
     if (spent > budget * 1.25) add('warning', `${label}: the stats add up to ${spent}, well above the ${budget} an item level ${set.itemLevel} ${set.quality} piece normally has.`);
   }
+  if (set.bonuses.length > MAX_BONUSES) add('error', `A set has ${MAX_BONUSES} bonus slots at most.`);
+  set.bonuses.forEach((b, i) => {
+    const label = `Bonus ${i + 1} (${b.threshold} pieces)`;
+    if (b.threshold > PIECES.length) add('warning', `${label}: the set has only ${PIECES.length} pieces, so this bonus can never be active.`);
+    if (set.bonuses.some((o, j) => j < i && o.threshold === b.threshold)) add('warning', `${label}: another bonus has the same piece count.`);
+    const t = b.template;
+    if (t.kind === 'pending') add('warning', `${label}: ${t.reason} No spell is made; it is listed as pending server code.`);
+    if ('spells' in t && t.spells.length === 0) add('error', `${label}: pick the spell it changes.`);
+    if (t.kind === 'proc' && t.triggerSpell <= 0) add('error', `${label}: pick the spell it casts.`);
+  });
   return out;
 }
 

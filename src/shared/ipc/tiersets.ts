@@ -1,9 +1,10 @@
+import type { ParsedBonus } from '@core/tiersets/bonus-text';
 import type { SetIssue } from '@core/tiersets/rows';
 import type { TierSet, PieceKey } from '@core/tiersets/model';
 import type { FileTarget } from '@core/tiersets/files';
 import type { Result } from './result';
 
-export type { TierSet, PieceKey, FileTarget, SetIssue };
+export type { TierSet, PieceKey, FileTarget, SetIssue, ParsedBonus };
 
 /** A look a piece can use: an `ItemDisplayInfo` id and what wears it */
 export interface TierLook {
@@ -26,4 +27,6 @@ export interface TierSetsApi {
   tierSetFile(name: string, piece: PieceKey, target: FileTarget, data: string): Promise<Result<{ paths: string[] }>>;
   /** Looks of the client that fit a piece's slot, found by display id or by the name of an item that uses it, most used first */
   tierSetLooks(piece: PieceKey, text: string): Promise<Result<{ looks: TierLook[] }>>;
+  /** Reads bonus wording into a template draft (rule-based; what it cannot map becomes a pending bonus) with the spell names found in Spell.dbc; nothing is saved */
+  tierSetBonusDraft(text: string): Promise<Result<ParsedBonus>>;
 }
