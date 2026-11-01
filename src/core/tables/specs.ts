@@ -302,6 +302,14 @@ export const SPECS: readonly TableSpec[] = [
     }).flat(),
   },
   {
+    table: 'item_dbc', title: 'Client item rows', blurb: 'The row the client is sent for an item the game files do not have: its class, slot and look.', owner: 'standalone',
+    scope: ['ID'], pk: ['ID'], multi: false,
+    fields: [
+      int('ClassID', 'Item class'), int('SubclassID', 'Item subclass'), int('Sound_Override_Subclassid', 'Sound subclass', { group: 'Advanced' }), int('Material', 'Material', { group: 'Advanced' }),
+      int('DisplayInfoID', 'Look (ItemDisplayInfo)'), int('InventoryType', 'Worn in'), int('SheatheType', 'Sheathe', { group: 'Advanced' }),
+    ],
+  },
+  {
     table: 'page_text', title: 'Book pages', blurb: 'The pages of books, notes and signs; each page points at the next.', owner: 'standalone',
     scope: ['ID'], pk: ['ID'], multi: false, search: ['Text'], nameColumn: 'Text',
     fields: [text('Text', 'Page text', { long: true }), int('NextPageID', 'Next page', { zero: 'last page' })],

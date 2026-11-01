@@ -1,4 +1,6 @@
 import { projectGossip } from '../../core/entities/gossip-tree';
+import { PIECES } from '../../core/tiersets/model';
+import { clientItemPatchWarning } from '../../core/tiersets/rows';
 import type { SchemaInfo } from '../../core/db/types';
 import { buildPatch, type PatchStatement, type PatchWarning } from '../../core/export/build-patch';
 import { findQuestGiverFixes, type QuestGiverFix } from '../../core/export/quest-giver';
@@ -187,7 +189,8 @@ export function createPatches(ctx: ApiContext) {
     revert.push(...existing.revert);
     revert.push(...world.revert);
     revert.push(...events.revert);
-    return { apply, revert, schema, warnings: [...compiledEntities.warnings, ...scripts.compiled.warnings, ...loot.warnings, ...eventWarnings], lootWarnings: loot.warnings, eventWarnings };
+    const tierWarning = clientItemPatchWarning((store.tierSets ?? []).flatMap((t) => PIECES.map((k) => t.pieces[k].entry)));
+    return { apply, revert, schema, warnings: [...compiledEntities.warnings, ...scripts.compiled.warnings, ...loot.warnings, ...eventWarnings, ...(tierWarning ? [tierWarning] : [])], lootWarnings: loot.warnings, eventWarnings };
   }
 
   /**

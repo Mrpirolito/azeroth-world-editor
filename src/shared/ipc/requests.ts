@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { RefKind } from '@core/db/types';
 import { eventRuleSchema } from '@core/entities/model';
+import { PIECES, SUFFIXES, tierSetSchema } from '@core/tiersets/model';
 import type { Api } from './api';
 import type { ApiError } from './result';
 
@@ -336,6 +337,18 @@ const REQUEST_SCHEMAS: Record<keyof Api, z.ZodType<unknown[]>> = {
   syncMain: z.tuple([z.boolean().optional()]),
   exportPrPrepare: z.tuple([z.object({ title: z.string().min(3).max(120), slug: z.string().regex(/^[a-z0-9_]{1,40}$/).optional() })]),
   exportPrPublish: z.tuple([z.object({ slug: z.string().regex(/^[a-z0-9_]{1,40}$/), confirm: z.boolean() })]),
+  tierSets: z.tuple([]),
+  tierSetSave: z.tuple([tierSetSchema]),
+  tierSetDelete: z.tuple([z.string().min(1).max(60)]),
+  tierSetFile: z.tuple([
+    z.string().min(1).max(60), z.enum(PIECES),
+    z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('texture'), region: z.number().int().min(0).max(7), suffix: z.enum(SUFFIXES) }),
+      z.object({ kind: z.literal('model'), slot: z.enum(['head', 'left', 'right']), file: z.enum(['m2', 'skin', 'blp']) }),
+    ]),
+    z.string().max(40_000_000),
+  ]),
+  tierSetLooks: z.tuple([z.enum(PIECES), z.string().max(100)]),
 };
 
 /**

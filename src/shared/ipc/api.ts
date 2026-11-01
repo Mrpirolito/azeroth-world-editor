@@ -18,6 +18,7 @@ import type { IdsApi } from './ids';
 import type { TablesApi } from './tables';
 import type { DbcApi } from './dbc';
 import type { SyncApi } from './sync';
+import type { TierSetsApi } from './tiersets';
 
 /** Everything the renderer can ask the main process to do: every area's calls */
 export interface Api
@@ -40,4 +41,5 @@ export interface Api
     IdsApi,
     TablesApi,
     DbcApi,
-    SyncApi {}
+    SyncApi,
+    TierSetsApi {}

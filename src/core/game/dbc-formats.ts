@@ -75,6 +75,9 @@ export const DBC_LAYOUTS: readonly DbcLayout[] = [
     one('ID', 'n'), ...run('ModelName', 2, 's'), ...run('ModelTexture', 2, 's'), ...run('InventoryIcon', 2, 's'), ...run('GeosetGroup', 3, 'u'),
     one('Flags', 'u'), one('SpellVisualID', 'u'), one('GroupSoundIndex', 'u'), ...run('HelmetGeosetVis', 2, 'u'), ...run('Texture', 8, 's'), one('ItemVisual', 'u'), one('ParticleColorID', 'u'),
   ]),
+  layout('ItemSet.dbc', 'Item sets', [
+    one('ID', 'n'), ...text('Name'), ...run('ItemID', 17, 'u'), ...run('SetSpellID', 8, 'u'), ...run('SetThreshold', 8, 'u'), one('RequiredSkill', 'u'), one('RequiredSkillRank', 'u'),
+  ]),
   layout('Faction.dbc', 'Factions', [
     one('ID', 'n'), one('ReputationIndex', 'i'), ...run('ReputationRaceMask', 4, 'u'), ...run('ReputationClassMask', 4, 'u'), ...run('ReputationBase', 4, 'i'), ...run('ReputationFlags', 4, 'u'),
     one('ParentFactionID', 'u'), one('SpilloverRateIn', 'f'), one('SpilloverRateOut', 'f'), one('SpilloverMaxRankIn', 'i'), one('SpilloverRankUnk', 'x'),
