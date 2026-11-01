@@ -2,9 +2,10 @@ import type { ParsedBonus } from '@core/tiersets/bonus-text';
 import type { SetIssue } from '@core/tiersets/rows';
 import type { TierSet, PieceKey } from '@core/tiersets/model';
 import type { FileTarget } from '@core/tiersets/files';
+import type { BossSummary, ObtainIssue, TokenGroup } from '@core/tiersets/obtain';
 import type { Result } from './result';
 
-export type { TierSet, PieceKey, FileTarget, SetIssue, ParsedBonus };
+export type { TierSet, PieceKey, FileTarget, SetIssue, ParsedBonus, TokenGroup, BossSummary, ObtainIssue };
 
 /** A look a piece can use: an `ItemDisplayInfo` id and what wears it */
 export interface TierLook {
@@ -29,4 +30,12 @@ export interface TierSetsApi {
   tierSetLooks(piece: PieceKey, text: string): Promise<Result<{ looks: TierLook[] }>>;
   /** Reads bonus wording into a template draft (rule-based; what it cannot map becomes a pending bonus) with the spell names found in Spell.dbc; nothing is saved */
   tierSetBonusDraft(text: string): Promise<Result<ParsedBonus>>;
+  /** The token groups the project holds */
+  tierTokenGroups(): Promise<Result<TokenGroup[]>>;
+  /** Saves a token group as one undo step: the five token items with their client rows, an ItemExtendedCost per token (reused when one exists), and the drops as loot rows of the bosses (per difficulty); ids are kept on later saves. The summary lists what drops where */
+  tierTokenGroupSave(group: TokenGroup): Promise<Result<{ group: TokenGroup; issues: ObtainIssue[]; warnings: string[]; summary: BossSummary[] }>>;
+  /** Takes a token group out of the project with everything its save made; refused while a set still names it */
+  tierTokenGroupDelete(name: string): Promise<Result<true>>;
+  /** Token looks of the game (miscellaneous items), found by display id or item name */
+  tierTokenLooks(text: string): Promise<Result<{ looks: TierLook[] }>>;
 }

@@ -1,5 +1,5 @@
 import { projectGossip } from '../../core/entities/gossip-tree';
-import { PIECES } from '../../core/tiersets/model';
+import { tierItemEntries } from '../../core/tiersets/obtain';
 import { pendingNotes } from '../../core/tiersets/bonus';
 import { clientItemPatchWarning } from '../../core/tiersets/rows';
 import type { SchemaInfo } from '../../core/db/types';
@@ -190,7 +190,7 @@ export function createPatches(ctx: ApiContext) {
     revert.push(...existing.revert);
     revert.push(...world.revert);
     revert.push(...events.revert);
-    const tierWarning = clientItemPatchWarning((store.tierSets ?? []).flatMap((t) => PIECES.map((k) => t.pieces[k].entry)));
+    const tierWarning = clientItemPatchWarning(tierItemEntries(store));
     return { apply, revert, schema, warnings: [...compiledEntities.warnings, ...scripts.compiled.warnings, ...loot.warnings, ...eventWarnings, ...(tierWarning ? [tierWarning] : []), ...pendingNotes(store.tierSets ?? [])], lootWarnings: loot.warnings, eventWarnings };
   }
 

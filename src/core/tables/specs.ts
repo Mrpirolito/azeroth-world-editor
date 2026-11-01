@@ -260,6 +260,8 @@ export const SPECS: readonly TableSpec[] = [
   lootSpec('prospecting_loot_template', 'Prospecting', 'What prospecting this ore gives.', 'item'),
   lootSpec('milling_loot_template', 'Milling', 'What milling this herb gives.', 'item'),
   // ---- On their own
+  // The CoA fork keys this table by the group and the reference list too
+  { ...lootSpec('creature_loot_template', 'Creature loot lists', 'What creatures drop, by loot id (the lootid of the creature template). The Loot tab of the NPC editor edits the list of one creature; tier set drops write here. Keep a list in one of the two places.', 'standalone'), pk: ['Entry', 'Item', 'Reference', 'GroupId'] },
   lootSpec('reference_loot_template', 'Reference loot lists', 'Shared lists other loot tables point at.', 'standalone'),
   lootSpec('fishing_loot_template', 'Fishing loot', 'What fishing gives in an area (the entry is the area id).', 'standalone'),
   lootSpec('mail_loot_template', 'Mail loot', 'Items a mail template sends (the entry is the mail template id).', 'standalone'),
@@ -307,6 +309,15 @@ export const SPECS: readonly TableSpec[] = [
     fields: [
       int('ClassID', 'Item class'), int('SubclassID', 'Item subclass'), int('Sound_Override_Subclassid', 'Sound subclass', { group: 'Advanced' }), int('Material', 'Material', { group: 'Advanced' }),
       int('DisplayInfoID', 'Look (ItemDisplayInfo)'), int('InventoryType', 'Worn in'), int('SheatheType', 'Sheathe', { group: 'Advanced' }),
+    ],
+  },
+  {
+    table: 'itemextendedcost_dbc', title: 'Extended costs (server)', blurb: 'What a vendor asks for besides gold: honor, arena points or items. The server reads these rows over ItemExtendedCost.dbc (the client reads its own file).', owner: 'standalone',
+    scope: ['ID'], pk: ['ID'], multi: false,
+    fields: [
+      int('HonorPoints', 'Honor points'), int('ArenaPoints', 'Arena points'), int('ArenaBracket', 'Arena bracket', { group: 'Advanced' }),
+      ...[1, 2, 3, 4, 5].map((i) => ref(`ItemID_${i}`, `Item ${i}`, 'item')), ...[1, 2, 3, 4, 5].map((i) => int(`ItemCount_${i}`, `Count of item ${i}`)),
+      int('RequiredArenaRating', 'Arena rating', { group: 'Advanced' }), int('ItemPurchaseGroup', 'Purchase group', { group: 'Advanced' }),
     ],
   },
   {

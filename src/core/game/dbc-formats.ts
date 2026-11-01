@@ -78,6 +78,9 @@ export const DBC_LAYOUTS: readonly DbcLayout[] = [
   layout('ItemSet.dbc', 'Item sets', [
     one('ID', 'n'), ...text('Name'), ...run('ItemID', 17, 'u'), ...run('SetSpellID', 8, 'u'), ...run('SetThreshold', 8, 'u'), one('RequiredSkill', 'u'), one('RequiredSkillRank', 'u'),
   ]),
+  layout('ItemExtendedCost.dbc', 'Extended costs', [
+    one('ID', 'n'), one('HonorPoints', 'u'), one('ArenaPoints', 'u'), one('ArenaBracket', 'u'), ...run('ItemID', 5, 'u'), ...run('ItemCount', 5, 'u'), one('RequiredArenaRating', 'u'), one('ItemPurchaseGroup', 'u'),
+  ]),
   layout('Faction.dbc', 'Factions', [
     one('ID', 'n'), one('ReputationIndex', 'i'), ...run('ReputationRaceMask', 4, 'u'), ...run('ReputationClassMask', 4, 'u'), ...run('ReputationBase', 4, 'i'), ...run('ReputationFlags', 4, 'u'),
     one('ParentFactionID', 'u'), one('SpilloverRateIn', 'f'), one('SpilloverRateOut', 'f'), one('SpilloverMaxRankIn', 'i'), one('SpilloverRankUnk', 'x'),

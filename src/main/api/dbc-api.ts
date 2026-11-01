@@ -14,7 +14,7 @@ import { hasWorldChanges } from '../../core/world/layer';
 import type { ClientPatchResult, DbcApi, DbcRowView, ExportApi } from '../../shared/ipc';
 import { pendingNotes } from '../../core/tiersets/bonus';
 import { clientItemPatchWarning } from '../../core/tiersets/rows';
-import { PIECES } from '../../core/tiersets/model';
+import { tierItemEntries } from '../../core/tiersets/obtain';
 import { buildMpqArchive } from '../mpq-writer';
 import { fail, run } from './errors';
 import type { Session } from './connection';
@@ -419,7 +419,7 @@ export function createDbcApi(s: Services, exportSql: ExportApi['exportProject'])
           await deps.fs.writeFile(join(folder, 'INSTALL.txt'), text);
         }
 
-        const tierWarning = clientItemPatchWarning((projectEntities().tierSets ?? []).flatMap((t) => PIECES.map((k) => t.pieces[k].entry)));
+        const tierWarning = clientItemPatchWarning(tierItemEntries(projectEntities()));
         if (tierWarning) notes.push(tierWarning);
         notes.push(...pendingNotes(projectEntities().tierSets ?? []));
         let sql: ClientPatchResult['sql'] = null;

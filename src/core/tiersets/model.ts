@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { bonusSchema } from './bonus';
+import { obtainSchema } from './token-model';
 
 /** A tier set: five armor pieces of one class, and everything the server and the client need to know about them */
 
@@ -105,6 +106,8 @@ export const tierSetSchema = z.object({
   /** The set bonuses (up to the 8 slots of ItemSet.dbc) */
   bonuses: z.array(bonusSchema).max(8).default([]),
   pieces: z.object({ head: pieceSchema, shoulders: pieceSchema, chest: pieceSchema, hands: pieceSchema, legs: pieceSchema }),
+  /** How the set is obtained: its token group and the vendor that sells it; absent: not set up */
+  obtain: obtainSchema.optional(),
 });
 export type TierSet = z.infer<typeof tierSetSchema>;
 

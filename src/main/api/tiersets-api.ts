@@ -2,6 +2,12 @@ import { findEdit, findRecord } from '../../core/dbc/edits';
 import type { Dbc, DbcValue } from '../../core/game/dbc-file';
 import { layoutOf } from '../../core/game/dbc-formats';
 import { idsAbove } from '../../core/ids/free';
+import { npcFromRows } from '../../core/entities/from-rows';
+import { vendorUnread, type CustomNpc } from '../../core/entities/model';
+import { rowsOrNone } from '../../core/links/context';
+import { npcLootId } from '../../core/entities/existing';
+import { readExistingRows } from '../entities/existing';
+import type { Row } from '../../core/tables/types';
 import type { TierSetsApi } from '../../shared/ipc';
 import { SPELL_INDEX } from '../../core/game/dbc-formats';
 import { SPELL_FILE_NAME, spellNum, spellText } from '../../core/spells/model';
@@ -10,6 +16,7 @@ import { pendingNotes, type BonusEnv, type SpellRef } from '../../core/tiersets/
 import { parseBonusText, resolveBonus } from '../../core/tiersets/bonus-text';
 import { fromBase64, prepareFile, withClientFile } from '../../core/tiersets/files';
 import { PIECES, PIECE_INFO, type TierSet } from '../../core/tiersets/model';
+import { applyTokenGroup, COST_FILE, COST_TABLE, dropPlan, findCost, findGroup, obtainIssues, refreshTokens, removeTokenGroup, syncVendors, tierItemEntries, tokenGroupIssues, tokenGroupName, type BossInfo, type TokenGroup } from '../../core/tiersets/obtain';
 import { clientItemPatchWarning, setIssues } from '../../core/tiersets/rows';
 import { cleanName } from '../../core/tiersets/textures';
 import type { Session } from './connection';
@@ -21,13 +28,16 @@ const SPELL_FORMAT = layoutOf(SPELL_FILE_NAME)!.format;
 /** Blizzard set-bonus spells: the first the client has is the pattern for the flags of a new bonus spell */
 const PATTERN_SPELLS = [37594, 70805];
 const DISPLAY_FORMAT = layoutOf(DISPLAY_FILE)!.format;
+const COST_FORMAT = layoutOf(COST_FILE)!.format;
+/** The item whose look the tokens start with: Blizzard's Chestguard of the Lost Conqueror */
+const PATTERN_TOKEN = 40610;
 
 /** The look search escapes what LIKE reads as its own */
 const likeText = (text: string): string => text.replace(/[\\'%_]/g, (c) => `\\${c}`);
 
 /** Tier sets: saved into the project as items, client rows, an item set and client files, all in one undo step */
 export function createTierSetsApi(s: Services): TierSetsApi {
-  const { connected, projectEntities, putEntities, asOneStep } = s.ctx;
+  const { connected, projectEntities, putEntities, asOneStep, deps } = s.ctx;
   const { dbcOf } = s.files;
 
   const fileFor = async (live: Session, file: string): Promise<Dbc> => {
@@ -37,9 +47,9 @@ export function createTierSetsApi(s: Services): TierSetsApi {
   };
 
   /** A DBC id no record of the file or the project's edits uses, from the highest up */
-  const freeIds = (d: Dbc, file: string, count: number, taken: Set<number>): number[] => {
+  const freeIds = (d: Dbc, file: string, count: number, taken: Set<number>, floor = 0): number[] => {
     const held = new Set((findEdit(projectEntities().dbcEdits, file)?.records ?? []).map((r) => r.id));
-    let high = 0;
+    let high = floor;
     for (let r = 0; r < d.count; r += 1) high = Math.max(high, d.word(r, 0));
     for (const id of held) high = Math.max(high, id);
     const out: number[] = [];
@@ -97,6 +107,41 @@ export function createTierSetsApi(s: Services): TierSetsApi {
     return max;
   };
 
+  const tableMax = async (live: Session, table: string, column: string): Promise<number> => {
+    try {
+      return (await live.db.selectMax?.(table, column)) ?? 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  /** A made-up NPC entry or spawn guid above the database and the project (and the spawns placed in the 3D view) */
+  const creatureEntry = async (live: Session): Promise<number> => idsAbove(await tableMax(live, 'creature_template', 'entry'), projectEntities().npcs.map((n) => n.entry), 1)[0]!;
+  const creatureGuid = async (live: Session): Promise<number> =>
+    idsAbove(await tableMax(live, 'creature', 'guid'), [...projectEntities().npcs.flatMap((n) => n.spawns.map((sp) => sp.guid)), ...deps.session.world.get().added.filter((a) => a.kind === 'creature').map((a) => a.guid)], 1)[0]!;
+
+  /** The vendor of a set made ready: a new NPC has its entry and spawn guid; one that was there is in the project with its stock read */
+  const settleVendor = async (live: Session, set: TierSet, prev: TierSet | undefined): Promise<{ set: TierSet; npc?: CustomNpc }> => {
+    const v = set.obtain?.vendor;
+    if (!v) return { set };
+    const next = structuredClone(set);
+    const cfg = next.obtain!.vendor!;
+    if (v.created) {
+      if (cfg.entry === 0) cfg.entry = prev?.obtain?.vendor?.created && prev.obtain.vendor.entry > 0 ? prev.obtain.vendor.entry : await creatureEntry(live);
+      if (cfg.spawn && cfg.spawn.guid === 0) {
+        const old = projectEntities().npcs.find((n) => n.entry === cfg.entry)?.spawns[0]?.guid;
+        cfg.spawn.guid = old ?? (await creatureGuid(live));
+      }
+      return { set: next };
+    }
+    if (projectEntities().npcs.some((n) => n.entry === v.entry)) return { set: next };
+    const read = await readExistingRows(live.db, 'npc', v.entry);
+    if (!read) throw fail('BAD_REQUEST', `Vendor: NPC ${v.entry} is not in the database.`);
+    const npc = { ...npcFromRows(v.entry, read.rows, { sharedLoot: read.sharedLoot, spawnCount: read.spawnCount, sharedTrainer: read.sharedTrainer, sharedMenus: read.sharedMenus, sharedTexts: read.sharedTexts, databaseScripts: read.databaseScripts }), scenes: read.scenes };
+    if (vendorUnread(npc)) throw fail('BAD_REQUEST', `Vendor: the stock of NPC ${v.entry} was not read from the database, so it cannot be added to.`);
+    return { set: next, npc };
+  };
+
   const find = (name: string): TierSet | undefined => (projectEntities().tierSets ?? []).find((t) => t.name.toLowerCase() === name.toLowerCase());
 
   return {
@@ -105,7 +150,7 @@ export function createTierSetsApi(s: Services): TierSetsApi {
     tierSetSave: (input) =>
       run(async () => {
         const live = connected();
-        const issues = setIssues(input);
+        const issues = [...setIssues(input), ...obtainIssues(input, projectEntities())];
         const errors = issues.filter((i) => i.severity === 'error');
         if (errors.length > 0) throw fail('BAD_REQUEST', `The set has problems: ${errors.map((e) => e.message).join(' ')}`);
         const prev = find(input.name);
@@ -113,7 +158,8 @@ export function createTierSetsApi(s: Services): TierSetsApi {
         if (clash) throw fail('BAD_REQUEST', `The set "${clash.name}" gives the same file names; pick a different name.`);
         if (cleanName(input.name) === '') throw fail('BAD_REQUEST', 'The name needs letters or digits.');
 
-        const set: TierSet = structuredClone(input);
+        const vendored = await settleVendor(live, input, find(input.name));
+        const set: TierSet = structuredClone(vendored.set);
         const needEntries = PIECES.filter((k) => set.pieces[k].entry === 0);
         const entries = await itemEntries(live, needEntries.length);
         needEntries.forEach((k, i) => { set.pieces[k].entry = entries[i]!; });
@@ -150,10 +196,11 @@ export function createTierSetsApi(s: Services): TierSetsApi {
         const settled = settleBonuses(set, env, (n) => idsAbove(high, used, n));
 
         const stored = await asOneStep(async () => {
-          putEntities(applyTierSet(projectEntities(), settled, prev, bases, env));
+          const store = vendored.npc ? { ...projectEntities(), npcs: [...projectEntities().npcs, vendored.npc] } : projectEntities();
+          putEntities(syncVendors(refreshTokens(applyTierSet(store, settled, prev, bases, env)), prev));
           return settled;
         }, `Tier set ${settled.name}`);
-        const warning = clientItemPatchWarning(PIECES.map((k) => stored.pieces[k].entry));
+        const warning = clientItemPatchWarning(tierItemEntries(projectEntities()));
         return { set: stored, issues, warnings: [...(warning ? [warning] : []), ...pendingNotes([stored])] };
       }),
 
@@ -161,8 +208,98 @@ export function createTierSetsApi(s: Services): TierSetsApi {
       run(async () => {
         const set = find(name);
         if (!set) throw fail('BAD_REQUEST', `The project has no tier set "${name}".`);
-        await asOneStep(async () => putEntities(removeTierSet(projectEntities(), set)), `Remove tier set ${set.name}`);
+        await asOneStep(async () => putEntities(syncVendors(refreshTokens(removeTierSet(projectEntities(), set)), set)), `Remove tier set ${set.name}`);
         return true as const;
+      }),
+
+    tierTokenGroups: () => run(async () => projectEntities().tokenGroups ?? []),
+
+    tierTokenGroupSave: (input) =>
+      run(async () => {
+        const live = connected();
+        const group: TokenGroup = structuredClone(input);
+        const name = tokenGroupName(group);
+        const prev = findGroup(projectEntities().tokenGroups, name);
+        if (group.displayId === 0) {
+          const pattern = await rowsOrNone(live.db, 'item_template', { entry: [String(PATTERN_TOKEN)] });
+          group.displayId = Number(pattern[0]?.displayid ?? 0);
+        }
+        const issues = tokenGroupIssues(group);
+        const errors = issues.filter((i) => i.severity === 'error');
+        if (errors.length > 0) throw fail('BAD_REQUEST', `The token group has problems: ${errors.map((e) => e.message).join(' ')}`);
+
+        const needEntries = PIECES.filter((k) => group.entries[k] === 0);
+        const entries = await itemEntries(live, needEntries.length);
+        needEntries.forEach((k, i) => { group.entries[k] = entries[i]!; });
+
+        // A cost that already asks for one of the token and nothing else is reused; the rest are new records above the file, the table and the project
+        const costs = await fileFor(live, COST_FILE);
+        const fresh = new Set<number>();
+        const lacking = PIECES.filter((k) => group.costs[k] === 0);
+        const taken = new Set<number>();
+        const floor = await tableMax(live, COST_TABLE, 'ID');
+        for (const k of lacking) {
+          const candidates: { id: number; values: DbcValue[] }[] = [];
+          for (let r = 0; r < costs.count; r += 1) if (costs.word(r, 4) === group.entries[k]) candidates.push({ id: costs.word(r, 0), values: costs.decode(r, COST_FORMAT) });
+          for (const rec of findEdit(projectEntities().dbcEdits, COST_FILE)?.records ?? []) candidates.push({ id: rec.id, values: rec.values });
+          const reused = findCost(group.entries[k], candidates);
+          if (reused !== undefined) group.costs[k] = reused;
+          else {
+            group.costs[k] = freeIds(costs, COST_FILE, 1, taken, floor)[0]!;
+            fresh.add(group.costs[k]);
+          }
+        }
+
+        // The bosses and the creatures of their other difficulties, then the loot rows the database has for the tables the drops write to
+        const infoOf = (r: Record<string, string | null>): BossInfo => ({
+          entry: Number(r.entry), name: r.name ?? '', lootId: Number(r.lootid ?? 0),
+          diff: [Number(r.difficulty_entry_1 ?? 0), Number(r.difficulty_entry_2 ?? 0), Number(r.difficulty_entry_3 ?? 0)],
+        });
+        const known = new Map<number, BossInfo>();
+        const load = async (ids: number[]): Promise<void> => {
+          const want = [...new Set(ids)].filter((id) => id > 0 && !known.has(id));
+          for (const r of await rowsOrNone(live.db, 'creature_template', { entry: want.map(String) })) known.set(Number(r.entry), infoOf(r));
+        };
+        await load(group.drops.map((d) => d.boss));
+        await load([...known.values()].flatMap((b) => [...b.diff]));
+        const plan = dropPlan(group, (entry) => known.get(entry));
+        const lootBase = new Map<number, Row[]>();
+        for (const r of await rowsOrNone(live.db, 'creature_loot_template', { Entry: [...plan.targets.keys()].map(String) })) {
+          const id = Number(r.Entry);
+          lootBase.set(id, [...(lootBase.get(id) ?? []), r]);
+        }
+        group.drops.forEach((d) => { d.bossName = known.get(d.boss)?.name ?? d.bossName; });
+
+        await asOneStep(async () => {
+          putEntities(syncVendors(applyTokenGroup(projectEntities(), group, prev, plan, lootBase, fresh)));
+          return group;
+        }, `Token group ${name}`);
+        const warning = clientItemPatchWarning(tierItemEntries(projectEntities()));
+        const shared = projectEntities().npcs.filter((n) => n.origin.kind === 'existing' && n.loot.length > 0 && plan.targets.has(npcLootId(n)));
+        const sharing = shared.map((n) => `${n.name || n.entry} is also edited in the NPC editor, whose Loot tab writes the same loot list; keep that list in one place.`);
+        return { group, issues, warnings: [...(warning ? [warning] : []), ...plan.notes, ...sharing], summary: plan.summary };
+      }),
+
+    tierTokenGroupDelete: (name) =>
+      run(async () => {
+        const group = findGroup(projectEntities().tokenGroups, name);
+        if (!group) throw fail('BAD_REQUEST', `The project has no token group "${name}".`);
+        const users = (projectEntities().tierSets ?? []).filter((t) => t.obtain?.tokenGroup.toLowerCase() === tokenGroupName(group).toLowerCase());
+        if (users.length > 0) throw fail('BAD_REQUEST', `The set${users.length > 1 ? 's' : ''} ${users.map((u) => u.name).join(', ')} still use${users.length > 1 ? '' : 's'} these tokens; change their obtain settings first.`);
+        await asOneStep(async () => putEntities(removeTokenGroup(projectEntities(), group)), `Remove token group ${tokenGroupName(group)}`);
+        return true as const;
+      }),
+
+    tierTokenLooks: (text) =>
+      run(async () => {
+        const { db } = connected();
+        if (!db.selectRaw) throw fail('BAD_REQUEST', 'This connection cannot run queries.');
+        const needle = text.trim();
+        const where = /^\d+$/.test(needle) ? `(displayid = ${Number(needle)} OR entry = ${Number(needle)})` : needle === '' ? '1' : `name LIKE '%${likeText(needle)}%'`;
+        const result = await db.selectRaw(
+          `SELECT displayid, MIN(name) AS name, COUNT(*) AS items FROM item_template WHERE class = 15 AND subclass = 0 AND displayid > 0 AND ${where} GROUP BY displayid ORDER BY items DESC, displayid LIMIT ${LOOK_LIMIT}`,
+        );
+        return { looks: result.rows.map((r) => ({ displayId: Number(r.displayid), name: r.name ?? '', items: Number(r.items) })) };
       }),
 
     tierSetFile: (name, piece, target, data) =>
