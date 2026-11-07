@@ -16,6 +16,7 @@ export function AppBar({
   onOpenSettings,
   onOpenTables,
   onOpenSpells,
+  onOpenCoa,
 }: {
   store: AppStore;
   /** Whether the quest chain's dock shows under or beside the world */
@@ -26,6 +27,8 @@ export function AppBar({
   /** Opens the database tables dialog (loot lists, texts, teleports, tools) */
   onOpenTables?(): void;
   onOpenSpells?(): void;
+  /** Opens the CoA content hub (tier sets, world bosses, pools, model wizard) */
+  onOpenCoa?(): void;
 }): React.JSX.Element {
   const projectName = store((s) => s.project.name);
   const dirty = store((s) => s.project.dirty);
@@ -78,6 +81,15 @@ export function AppBar({
               <path d="M8 1.5l1.7 4.3 4.3.2-3.4 2.7 1.2 4.3L8 10.6l-3.8 2.4 1.2-4.3L2 6l4.3-.2z" />
             </svg>
             <span className="app-bar__quests-label">Spells</span>
+          </button>
+        )}
+        {onOpenCoa && (
+          <button type="button" className="btn app-bar__quests" onClick={onOpenCoa}>
+            <svg className="app-bar__icon" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 1.5l5.5 3v6L8 13.5l-5.5-3v-6z" />
+              <path d="M8 1.5v12M2.5 4.5L8 7.5l5.5-3" />
+            </svg>
+            <span className="app-bar__quests-label">CoA content</span>
           </button>
         )}
         <HistoryButtons store={store} />

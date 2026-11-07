@@ -14,16 +14,19 @@ const spec = (table: string) => specOf(table)!;
 const set = (table: string, scope: Record<string, string>, original: Row[], rows: Row[], owner?: RowSet['owner']): RowSet => ({ table, scope, original, rows, ...(owner ? { owner } : {}) });
 
 const UNIQUE_KEY_ONLY = new Set(['spell_linked_spell', 'spell_script_names']);
+// Created by a CoA module's SQL, so the fork's base schema does not have them
+const MODULE_TABLES = new Set(['coa_world_boss_level']);
 
 describe('table specs against the fork\'s schema', () => {
-  const columns = loadFork(SPECS.map((s) => s.table));
-  it.each(SPECS.map((s) => [s.table, s] as const))('%s: scope, key and fields are columns of the table', (table, s) => {
+  const schemaSpecs = SPECS.filter((s) => !MODULE_TABLES.has(s.table));
+  const columns = loadFork(schemaSpecs.map((s) => s.table));
+  it.each(schemaSpecs.map((s) => [s.table, s] as const))('%s: scope, key and fields are columns of the table', (table, s) => {
     const names = columns[table]!.map((c) => c.name);
     for (const c of [...s.scope, ...s.pk]) expect(names, `${table}.${c}`).toContain(c);
     for (const f of s.fields) expect(names, `${table}.${f.column}`).toContain(f.column);
 
   });
-  it.each(SPECS.filter((s) => !s.overlay).map((s) => [s.table, s] as const))('%s: its key is the table\'s primary key', (table, s) => {
+  it.each(schemaSpecs.filter((s) => !s.overlay).map((s) => [s.table, s] as const))('%s: its key is the table\'s primary key', (table, s) => {
     // These two have only a unique key (no primary key): the sheet deletes and writes rows by it
     if (UNIQUE_KEY_ONLY.has(table)) return;
     expect(columns[table]!.filter((c) => c.isKey).map((c) => c.name).sort()).toEqual([...s.pk].sort());

@@ -1,0 +1,23 @@
+.coa-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.coa-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  text-align: left;
+  color: var(--text);
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.coa-card:hover,
+.coa-card[aria-pressed='true'] {
+  border-color: var(--accent, currentColor);
+}

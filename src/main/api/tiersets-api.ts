@@ -19,6 +19,7 @@ import { PIECES, PIECE_INFO, type TierSet } from '../../core/tiersets/model';
 import { applyTokenGroup, COST_FILE, COST_TABLE, dropPlan, findCost, findGroup, obtainIssues, refreshTokens, removeTokenGroup, syncVendors, tierItemEntries, tokenGroupIssues, tokenGroupName, type BossInfo, type TokenGroup } from '../../core/tiersets/obtain';
 import { clientItemPatchWarning, setIssues } from '../../core/tiersets/rows';
 import { cleanName } from '../../core/tiersets/textures';
+import { createAllocators } from './allocators';
 import type { Session } from './connection';
 import { fail, run } from './errors';
 import type { Services } from './services';
@@ -38,37 +39,7 @@ const likeText = (text: string): string => text.replace(/[\\'%_]/g, (c) => `\\${
 /** Tier sets: saved into the project as items, client rows, an item set and client files, all in one undo step */
 export function createTierSetsApi(s: Services): TierSetsApi {
   const { connected, projectEntities, putEntities, asOneStep, deps } = s.ctx;
-  const { dbcOf } = s.files;
-
-  const fileFor = async (live: Session, file: string): Promise<Dbc> => {
-    const d = await dbcOf(live, file);
-    if ('reason' in d) throw fail('BAD_REQUEST', d.reason);
-    return d;
-  };
-
-  /** A DBC id no record of the file or the project's edits uses, from the highest up */
-  const freeIds = (d: Dbc, file: string, count: number, taken: Set<number>, floor = 0): number[] => {
-    const held = new Set((findEdit(projectEntities().dbcEdits, file)?.records ?? []).map((r) => r.id));
-    let high = floor;
-    for (let r = 0; r < d.count; r += 1) high = Math.max(high, d.word(r, 0));
-    for (const id of held) high = Math.max(high, id);
-    const out: number[] = [];
-    for (let id = high + 1; out.length < count; id += 1) if (!taken.has(id)) { taken.add(id); out.push(id); }
-    return out;
-  };
-
-  const itemEntries = async (live: Session, count: number): Promise<number[]> => {
-    let max = 0;
-    for (const [table, column] of [['item_template', 'entry'], ['item_dbc', 'ID']] as const) {
-      try {
-        max = Math.max(max, (await live.db.selectMax?.(table, column)) ?? 0);
-      } catch {
-        // A fork without the table has none
-      }
-    }
-    const used = [...projectEntities().items.map((i) => i.entry), ...(projectEntities().rowsets ?? []).filter((r) => r.table === 'item_dbc').map((r) => Number(r.scope.ID))];
-    return idsAbove(max, used, count);
-  };
+  const { fileFor, freeIds, itemEntries, spellHigh, tableMax, creatureEntry, creatureGuid } = createAllocators(s);
 
   /** Spells as the bonuses see them: the project's version of a record over the file's */
   const spellEnv = (spells: Dbc): BonusEnv => {
@@ -94,31 +65,6 @@ export function createTierSetsApi(s: Services): TierSetsApi {
     for (const rec of findEdit(projectEntities().dbcEdits, SPELL_FILE_NAME)?.records ?? []) if (spellText(rec.values, 'Name').toLowerCase() === want && !ids.includes(rec.id)) ids.push(rec.id);
     return ids.find((id) => env.spell(id)?.mask.some((m) => m !== 0)) ?? ids[0];
   };
-
-  /** The highest spell id of the file and the spell_dbc table */
-  const spellHigh = async (live: Session, spells: Dbc): Promise<number> => {
-    let max = 0;
-    for (let r = 0; r < spells.count; r += 1) max = Math.max(max, spells.word(r, 0));
-    try {
-      max = Math.max(max, (await live.db.selectMax?.('spell_dbc', 'ID')) ?? 0);
-    } catch {
-      // A fork without the table has none
-    }
-    return max;
-  };
-
-  const tableMax = async (live: Session, table: string, column: string): Promise<number> => {
-    try {
-      return (await live.db.selectMax?.(table, column)) ?? 0;
-    } catch {
-      return 0;
-    }
-  };
-
-  /** A made-up NPC entry or spawn guid above the database and the project (and the spawns placed in the 3D view) */
-  const creatureEntry = async (live: Session): Promise<number> => idsAbove(await tableMax(live, 'creature_template', 'entry'), projectEntities().npcs.map((n) => n.entry), 1)[0]!;
-  const creatureGuid = async (live: Session): Promise<number> =>
-    idsAbove(await tableMax(live, 'creature', 'guid'), [...projectEntities().npcs.flatMap((n) => n.spawns.map((sp) => sp.guid)), ...deps.session.world.get().added.filter((a) => a.kind === 'creature').map((a) => a.guid)], 1)[0]!;
 
   /** The vendor of a set made ready: a new NPC has its entry and spawn guid; one that was there is in the project with its stock read */
   const settleVendor = async (live: Session, set: TierSet, prev: TierSet | undefined): Promise<{ set: TierSet; npc?: CustomNpc }> => {

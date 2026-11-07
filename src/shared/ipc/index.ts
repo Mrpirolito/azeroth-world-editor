@@ -28,6 +28,7 @@ export type * from './ids';
 export type * from './tables';
 export type * from './dbc';
 export type * from './tiersets';
+export type * from './modelwizard';
 export type * from './sync';
 export type * from './result';
 export type { Api } from './api';

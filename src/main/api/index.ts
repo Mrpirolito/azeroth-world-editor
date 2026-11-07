@@ -19,6 +19,7 @@ import { createIdsApi } from './ids-api';
 import { createTablesApi } from './tables-api';
 import { createDbcApi } from './dbc-api';
 import { createSyncApi } from './sync-api';
+import { createModelWizardApi } from './modelwizard-api';
 import { createTierSetsApi } from './tiersets-api';
 import type { ApiDeps } from './deps';
 import { createServices } from './services';
@@ -62,6 +63,7 @@ export function createApi(deps: ApiDeps): Api {
     ...createTablesApi(services),
     ...createDbcApi(services, exportApi.exportProject),
     ...createTierSetsApi(services),
+    ...createModelWizardApi(services),
     ...createSyncApi(services, deps, { connect: connectionApi.connect, previewChanges: exportApi.previewChanges }),
   };
 }

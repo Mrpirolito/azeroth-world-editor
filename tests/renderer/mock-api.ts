@@ -186,6 +186,7 @@ export function makeMockApi(overrides: Partial<Record<keyof Api, (...args: any[]
     tierTokenGroupSave: vi.fn(async (group: unknown) => okv({ group, issues: [], warnings: [], summary: [] })),
     tierTokenGroupDelete: vi.fn(async () => okv(true as const)),
     tierTokenLooks: vi.fn(async () => okv({ looks: [] })),
+    modelWizard: vi.fn(async () => okv({ ids: { modelData: 1, display: 1, creature: 1, spell: 0, item: 0 }, records: [], paths: [], issues: [], warnings: [], saved: false })),
     dbcSetRecord: vi.fn(async (_file: string, values: unknown[]) => okv({ id: Number(values[0]), issues: [] })),
     dbcRemoveRecord: vi.fn(async () => okv(true as const)),
     spellClone: vi.fn(async (_base: number, id?: number) => okv({ id: id ?? 1, issues: [] })),

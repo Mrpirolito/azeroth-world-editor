@@ -504,6 +504,40 @@ export const SPECS: readonly TableSpec[] = [
     fields: [text('ScriptName', 'Script name', { help: 'Must match a script the server was built with; the server logs and ignores unknown names.' })],
     blank: { ScriptName: '' },
   },
+  {
+    table: 'coa_world_boss_level', title: 'World boss levels', blurb: 'The health and damage a CoA world boss gets on each difficulty (read by mod-coa-raid-difficulty).', owner: 'standalone',
+    scope: ['entry'], pk: ['entry', 'difficulty'], multi: true,
+    fields: [
+      int('difficulty', 'Difficulty', { min: 0, max: 255 }), int('health', 'Health', { min: 0 }),
+      float('damage_pct', 'Damage (% of base)'), text('note', 'Note'),
+    ],
+    blank: { difficulty: '0', health: '0', damage_pct: '100', note: '' },
+    next: (rows) => ({ difficulty: String(rows.length) }),
+  },
+  {
+    table: 'pool_template', title: 'Spawn pools', blurb: 'A pool picks at most max_limit of its members to be in the world at a time (gathering nodes, rare spawns).', owner: 'standalone',
+    scope: ['entry'], pk: ['entry'], multi: false, search: ['description'], nameColumn: 'description',
+    fields: [int('max_limit', 'Members out at once', { min: 1 }), text('description', 'Note', { nullable: true })],
+    blank: { max_limit: '1', description: '' },
+  },
+  {
+    table: 'pool_creature', title: 'Pool creature spawns', blurb: 'Puts a creature spawn (by guid) in a pool.', owner: 'standalone',
+    scope: ['guid'], pk: ['guid'], multi: false, search: ['description'], nameColumn: 'description',
+    fields: [int('pool_entry', 'Pool'), float('chance', 'Chance (%)', { zero: 'equal share' }), text('description', 'Note', { nullable: true })],
+    blank: { pool_entry: '0', chance: '0', description: '' },
+  },
+  {
+    table: 'pool_gameobject', title: 'Pool object spawns', blurb: 'Puts an object spawn (by guid), such as a gathering node, in a pool.', owner: 'standalone',
+    scope: ['guid'], pk: ['guid'], multi: false, search: ['description'], nameColumn: 'description',
+    fields: [int('pool_entry', 'Pool'), float('chance', 'Chance (%)', { zero: 'equal share' }), text('description', 'Note', { nullable: true })],
+    blank: { pool_entry: '0', chance: '0', description: '' },
+  },
+  {
+    table: 'pool_pool', title: 'Pools in pools', blurb: 'Puts a pool inside a mother pool.', owner: 'standalone',
+    scope: ['pool_id'], pk: ['pool_id'], multi: false, search: ['description'], nameColumn: 'description',
+    fields: [int('mother_pool', 'Mother pool'), float('chance', 'Chance (%)', { zero: 'equal share' }), text('description', 'Note', { nullable: true })],
+    blank: { mother_pool: '0', chance: '0', description: '' },
+  },
 ];
 
 export const SPEC_BY_TABLE: ReadonlyMap<string, TableSpec> = new Map(SPECS.map((s) => [s.table, s]));

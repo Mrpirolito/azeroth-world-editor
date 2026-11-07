@@ -91,6 +91,17 @@ export const DBC_LAYOUTS: readonly DbcLayout[] = [
     one('SoundProviderPref', 'u'), one('SoundProviderPrefUnderwater', 'u'), one('AmbienceID', 'u'), one('ZoneMusic', 'u'), one('IntroSound', 'u'),
     one('ExplorationLevel', 'i'), ...text('AreaName'), one('FactionGroupMask', 'u'), ...run('LiquidTypeID', 4, 'u'), one('MinElevation', 'f'), one('AmbientMultiplier', 'f'), one('LightID', 'u'),
   ]),
+  layout('CreatureModelData.dbc', 'Creature models', [
+    one('ID', 'n'), one('Flags', 'u'), one('ModelPath', 's'), one('SizeClass', 'u'), one('ModelScale', 'f'), one('BloodLevel', 'u'), one('FootprintTextureID', 'u'),
+    ...run('Footprint', 3, 'f'), one('FoleyMaterialID', 'u'), one('FootstepShakeSize', 'u'), one('DeathThudShakeSize', 'u'), one('SoundDataID', 'u'),
+    one('CollisionWidth', 'f'), one('CollisionHeight', 'f'), one('MountHeight', 'f'), ...run('GeoBoxMin', 3, 'f'), ...run('GeoBoxMax', 3, 'f'),
+    one('WorldEffectScale', 'f'), one('AttachedEffectScale', 'f'), ...run('MissileCollision', 3, 'f'),
+  ]),
+  layout('CreatureDisplayInfo.dbc', 'Creature looks', [
+    one('ID', 'n'), one('ModelID', 'u'), one('SoundID', 'u'), one('ExtendedDisplayInfoID', 'u'), one('CreatureModelScale', 'f'), one('CreatureModelAlpha', 'u'),
+    ...run('TextureVariation', 3, 's'), one('PortraitTextureName', 's'), one('BloodLevel', 'u'), one('BloodID', 'u'), one('NPCSoundID', 'u'),
+    one('ParticleColorID', 'u'), one('CreatureGeosetData', 'u'), one('ObjectEffectPackageID', 'u'),
+  ]),
 ];
 
 /** The layout of a file by name, any case */

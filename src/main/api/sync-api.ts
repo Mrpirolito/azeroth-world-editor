@@ -6,6 +6,7 @@ import { ENTITY_KEYS } from '../../core/entities/context';
 import { storeSize } from '../../core/entities/model';
 import { SCRIPT_KEYS } from '../../core/scripts/context';
 import { insertedIds, prBody } from '../../core/sync/pr-checks';
+import { newDbcIds } from '../../core/modelwizard/apply';
 import { tierSetIds } from '../../core/tiersets/ids';
 import { tierObtainIds } from '../../core/tiersets/obtain';
 import { TOOL_VERSION } from '../../core/version';
@@ -103,7 +104,7 @@ export function createSyncApi(s: Services, deps: ApiDeps, parts: { connect: Conn
         const theSlug = slug ?? patchSlug(title);
         const date = patchDate(deps.now());
         const sql = renderPatch(statements, project.schema, { toolVersion: TOOL_VERSION, date, label: title, lint: true });
-        const claimed = [...insertedIds(statements, { ...SCRIPT_KEYS, ...ENTITY_KEYS, ...KEY_COLUMNS }), ...tierSetIds(store.tierSets ?? []), ...tierObtainIds(store)];
+        const claimed = [...insertedIds(statements, { ...SCRIPT_KEYS, ...ENTITY_KEYS, ...KEY_COLUMNS }), ...tierSetIds(store.tierSets ?? []), ...tierObtainIds(store), ...newDbcIds(store.dbcEdits)];
         const ids = claimed.filter((u, i) => claimed.findIndex((o) => o.table === u.table && o.id === u.id) === i);
         const body = prBody({ title, statements, ids, differences, warnings: project.warnings });
         const preview = await withDb(live.profileId, (db) => preparePr(p, db, { title, slug: theSlug, date, sql, ids, body }));

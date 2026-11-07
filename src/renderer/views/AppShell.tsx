@@ -16,6 +16,7 @@ import { ProjectDialog } from './ProjectDialog';
 import { SettingsDialog } from './SettingsDialog';
 import { TablesDialog } from '../tables/TablesDialog';
 import { SpellsDialog } from '../spells/SpellsDialog';
+import { CoaHub } from '../coa/CoaHub';
 import { RecoveryDialog } from './RecoveryDialog';
 import { IdConflictDialog } from './IdConflictDialog';
 import './AppShell.css';
@@ -31,6 +32,7 @@ export function AppShell({ store }: { store: AppStore }): React.JSX.Element {
   const [showSettings, setShowSettings] = useState(false);
   const [showTables, setShowTables] = useState(false);
   const [showSpells, setShowSpells] = useState(false);
+  const [showCoa, setShowCoa] = useState(false);
   const [prefs, updatePrefs] = usePreferences();
   const questsAsked = store((s) => s.questsAsked);
   const filePath = store((s) => s.project.filePath);
@@ -134,6 +136,7 @@ export function AppShell({ store }: { store: AppStore }): React.JSX.Element {
         onOpenSettings={() => setShowSettings(true)}
         onOpenTables={() => setShowTables(true)}
         onOpenSpells={() => setShowSpells(true)}
+        onOpenCoa={() => setShowCoa(true)}
       />
       <ErrorBanner store={store} />
       <HistoryNote
@@ -191,6 +194,7 @@ export function AppShell({ store }: { store: AppStore }): React.JSX.Element {
       {showSettings && <SettingsDialog store={store} onClose={() => setShowSettings(false)} />}
       {showTables && <TablesDialog onClose={() => setShowTables(false)} />}
       {showSpells && <SpellsDialog onClose={() => setShowSpells(false)} />}
+      {showCoa && <CoaHub onClose={() => setShowCoa(false)} />}
       <RecoveryDialog store={store} />
       <IdConflictDialog store={store} />
     </div>

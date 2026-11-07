@@ -28,7 +28,7 @@ const short = (text: string | null | undefined, n = 60): string => {
 const labelOf = (spec: TableSpec, row: Row): string => `${row[spec.scope[0]!] ?? '?'}${spec.nameColumn && row[spec.nameColumn] ? ` · ${short(row[spec.nameColumn])}` : ''}`;
 
 /** One table of the database: find a row by id or words, or start a new one, and edit it as a sheet */
-function TableBrowser({ spec }: { spec: TableSpec }): React.JSX.Element {
+export function TableBrowser({ spec }: { spec: TableSpec }): React.JSX.Element {
   const api = useApi();
   const project = useProjectEntities();
   const idColumn = spec.scope[0]!;

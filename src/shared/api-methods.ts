@@ -153,6 +153,7 @@ export const API_METHODS = [
   'syncMain',
   'exportPrPrepare',
   'exportPrPublish',
+  'modelWizard',
   'tierSets',
   'tierSetSave',
   'tierSetDelete',

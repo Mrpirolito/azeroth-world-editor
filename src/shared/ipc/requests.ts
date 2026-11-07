@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { RefKind } from '@core/db/types';
 import { eventRuleSchema } from '@core/entities/model';
+import { wizardFilesSchema, wizardSchema } from '@core/modelwizard/model';
 import { PIECES, SUFFIXES, tierSetSchema } from '@core/tiersets/model';
 import { tokenGroupSchema } from '@core/tiersets/token-model';
 import type { Api } from './api';
@@ -355,6 +356,7 @@ const REQUEST_SCHEMAS: Record<keyof Api, z.ZodType<unknown[]>> = {
   tierTokenGroupSave: z.tuple([tokenGroupSchema]),
   tierTokenGroupDelete: z.tuple([z.string().min(1).max(100)]),
   tierTokenLooks: z.tuple([z.string().max(100)]),
+  modelWizard: z.tuple([wizardSchema, wizardFilesSchema, z.boolean()]),
 };
 
 /**
