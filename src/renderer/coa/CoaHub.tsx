@@ -47,7 +47,7 @@ export function CoaHub({ onClose }: { onClose(): void }): React.JSX.Element {
           {section && <button type="button" className="btn" onClick={() => setOpen(null)}>All CoA content</button>}
           <button type="button" className="btn btn--icon" aria-label="Close" onClick={onClose}>✕</button>
         </header>
-        <div className="tables-dialog__body">
+        <div className="tables-dialog__body coa-hub__body">
           <div className="tables-dialog__main" role="region" aria-label={section?.label ?? 'CoA content'}>
             {View ? <View /> : (
               <div className="coa-cards">

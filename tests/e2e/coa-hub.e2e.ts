@@ -51,7 +51,7 @@ test('the CoA hub lists its cards, opens world bosses and walks the model wizard
 
   // The form is prefilled from .env; connect if the app did not do it on launch
   const connect = page.getByRole('button', { name: 'Connect', exact: true });
-  if (await connect.isVisible({ timeout: 5000 }).catch(() => false)) {
+  if (await connect.waitFor({ timeout: 15000 }).then(() => true).catch(() => false)) {
     await page.getByLabel('Password').fill(process.env['ACQC_WORLD_DB_PASSWORD'] ?? '');
     await connect.click();
   }

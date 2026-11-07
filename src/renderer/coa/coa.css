@@ -21,3 +21,7 @@
 .coa-card[aria-pressed='true'] {
   border-color: var(--accent, currentColor);
 }
+
+.coa-hub__body {
+  grid-template-columns: 1fr;
+}
