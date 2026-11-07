@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import type { ApiError } from '@shared/ipc';
 import type { AppStore } from '../state/app-store';
 import { PanelFrame } from '../modules/ModulePanel';
+import { PrExportDialog } from './PrExportDialog';
 
 /** Statements are one per line, each ending in `;`; blank lines and comments never end that way. */
 function countStatements(sql: string): number {
@@ -36,6 +38,8 @@ export function ExportBar({ store }: { store: AppStore }): React.JSX.Element | n
   const confirmApply = store((s) => s.confirmApply);
   const cancelApply = store((s) => s.cancelApply);
 
+  const [prOpen, setPrOpen] = useState(false);
+
   if (!open) return null;
 
   const unsafe = !open.fidelity.ok;
@@ -62,6 +66,10 @@ export function ExportBar({ store }: { store: AppStore }): React.JSX.Element | n
       >
         Apply to dev DB
       </button>
+      <button type="button" className="btn" onClick={() => setPrOpen(true)}>
+        Export as PR
+      </button>
+      {prOpen && <PrExportDialog onClose={() => setPrOpen(false)} />}
       {!hasDevProfile && (
         <span id="export-no-dev" className="visually-hidden">
           {noDevHint}

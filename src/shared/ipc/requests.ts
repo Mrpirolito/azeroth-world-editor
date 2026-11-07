@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import type { RefKind } from '@core/db/types';
 import { eventRuleSchema } from '@core/entities/model';
+import { wizardFilesSchema, wizardSchema } from '@core/modelwizard/model';
+import { PIECES, SUFFIXES, tierSetSchema } from '@core/tiersets/model';
+import { tokenGroupSchema } from '@core/tiersets/token-model';
 import type { Api } from './api';
 import type { ApiError } from './result';
 
@@ -326,6 +329,34 @@ const REQUEST_SCHEMAS: Record<keyof Api, z.ZodType<unknown[]>> = {
       z.object({ camera: z.object({ map: z.number().int(), x: finite, y: finite, z: finite, area: debugText.nullable() }).nullable() }),
     ]),
   ]),
+  syncSettings: z.tuple([]),
+  syncSetSettings: z.tuple([z.object({
+    repoDir: z.string().min(1).max(MAX_PATH), worktreeDir: z.string().min(1).max(MAX_PATH), prWorktreeParent: z.string().min(1).max(MAX_PATH),
+    python: z.string().min(1).max(MAX_PATH), mainRef: z.string().regex(/^[A-Za-z0-9_.\/-]+$/).max(200), forkRemote: z.string().regex(/^[A-Za-z0-9_.-]+$/).max(100),
+    prRepo: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/).max(200), prHeadOwner: z.string().regex(/^[A-Za-z0-9_.-]+$/).max(100), mysqlBin: z.string().min(1).max(MAX_PATH),
+  }).partial()]),
+  syncStatus: z.tuple([z.boolean().optional()]),
+  syncMain: z.tuple([z.boolean().optional()]),
+  exportPrPrepare: z.tuple([z.object({ title: z.string().min(3).max(120), slug: z.string().regex(/^[a-z0-9_]{1,40}$/).optional() })]),
+  exportPrPublish: z.tuple([z.object({ slug: z.string().regex(/^[a-z0-9_]{1,40}$/), confirm: z.boolean() })]),
+  tierSets: z.tuple([]),
+  tierSetSave: z.tuple([tierSetSchema]),
+  tierSetDelete: z.tuple([z.string().min(1).max(60)]),
+  tierSetFile: z.tuple([
+    z.string().min(1).max(60), z.enum(PIECES),
+    z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('texture'), region: z.number().int().min(0).max(7), suffix: z.enum(SUFFIXES) }),
+      z.object({ kind: z.literal('model'), slot: z.enum(['head', 'left', 'right']), file: z.enum(['m2', 'skin', 'blp']) }),
+    ]),
+    z.string().max(40_000_000),
+  ]),
+  tierSetLooks: z.tuple([z.enum(PIECES), z.string().max(100)]),
+  tierSetBonusDraft: z.tuple([z.string().min(1).max(500)]),
+  tierTokenGroups: z.tuple([]),
+  tierTokenGroupSave: z.tuple([tokenGroupSchema]),
+  tierTokenGroupDelete: z.tuple([z.string().min(1).max(100)]),
+  tierTokenLooks: z.tuple([z.string().max(100)]),
+  modelWizard: z.tuple([wizardSchema, wizardFilesSchema, z.boolean()]),
 };
 
 /**

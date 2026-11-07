@@ -12,6 +12,9 @@ import { spellIssues } from '../../core/spells/validate';
 import type { Issue } from '../../core/validate/validate';
 import { hasWorldChanges } from '../../core/world/layer';
 import type { ClientPatchResult, DbcApi, DbcRowView, ExportApi } from '../../shared/ipc';
+import { pendingNotes } from '../../core/tiersets/bonus';
+import { clientItemPatchWarning } from '../../core/tiersets/rows';
+import { tierItemEntries } from '../../core/tiersets/obtain';
 import { buildMpqArchive } from '../mpq-writer';
 import { fail, run } from './errors';
 import type { Session } from './connection';
@@ -340,14 +343,15 @@ export function createDbcApi(s: Services, exportSql: ExportApi['exportProject'])
       run(async () => {
         const live = connected();
         const edits = editsOf();
+        const clientFiles = projectEntities().clientFiles ?? [];
         const world = deps.session.world.get();
         const sqlNeeded = storeSize(projectEntities()) > 0 || hasWorldChanges(world);
-        if (edits.length === 0 && !sqlNeeded) throw fail('BAD_REQUEST', 'The project changes no DBC record, table row or world detail, so there is nothing to export.');
+        if (edits.length === 0 && clientFiles.length === 0 && !sqlNeeded) throw fail('BAD_REQUEST', 'The project changes no DBC record, table row or world detail, so there is nothing to export.');
         const patchName = options?.patchName ?? DEFAULT_PATCH_NAME;
-        const wantMpq = (options?.mpq ?? true) && edits.length > 0;
+        const wantMpq = (options?.mpq ?? true) && (edits.length > 0 || clientFiles.length > 0);
         const nameProblem = wantMpq ? patchNameIssue(patchName) : null;
         if (nameProblem) throw fail('BAD_REQUEST', nameProblem);
-        if (edits.length > 0 && !deps.fs.writeBytes) throw fail('BAD_REQUEST', 'This build cannot write binary files.');
+        if ((edits.length > 0 || clientFiles.length > 0) && !deps.fs.writeBytes) throw fail('BAD_REQUEST', 'This build cannot write binary files.');
 
         // Check every edited record first: nothing is written while one has an error
         const issues: Issue[] = [];
@@ -394,9 +398,13 @@ export function createDbcApi(s: Services, exportSql: ExportApi['exportProject'])
         }
         let mpqPath: string | null = null;
         if (wantMpq) {
-          const archive = await buildMpqArchive(built.map((b) => ({ path: `DBFilesClient\\${b.file}`, data: b.bytes })));
+          const archive = await buildMpqArchive([
+            ...built.map((b) => ({ path: `DBFilesClient\\${b.file}`, data: b.bytes })),
+            ...clientFiles.flatMap((f) => f.paths.map((path) => ({ path, data: new Uint8Array(Buffer.from(f.data, 'base64')) }))),
+          ]);
           mpqPath = join(folder, patchName);
           await deps.fs.writeBytes!(mpqPath, archive);
+          if (clientFiles.length > 0) notes.push(`${patchName} also carries ${clientFiles.length} texture and model files of tier sets.`);
           notes.push(`Copy ${patchName} into each client's Data folder (keep any earlier ${patchName} as .bak). It loads after patch-CZZ, so its tables win. Close the client first.`);
         }
         if (built.length > 0) {
@@ -411,6 +419,9 @@ export function createDbcApi(s: Services, exportSql: ExportApi['exportProject'])
           await deps.fs.writeFile(join(folder, 'INSTALL.txt'), text);
         }
 
+        const tierWarning = clientItemPatchWarning(tierItemEntries(projectEntities()));
+        if (tierWarning) notes.push(tierWarning);
+        notes.push(...pendingNotes(projectEntities().tierSets ?? []));
         let sql: ClientPatchResult['sql'] = null;
         if (sqlNeeded) {
           const out = await exportSql();

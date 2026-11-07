@@ -147,6 +147,23 @@ export const API_METHODS = [
   'updateSkip',
   'updateRemind',
   'updateOpen',
+  'syncSettings',
+  'syncSetSettings',
+  'syncStatus',
+  'syncMain',
+  'exportPrPrepare',
+  'exportPrPublish',
+  'modelWizard',
+  'tierSets',
+  'tierSetSave',
+  'tierSetDelete',
+  'tierSetFile',
+  'tierSetLooks',
+  'tierSetBonusDraft',
+  'tierTokenGroups',
+  'tierTokenGroupSave',
+  'tierTokenGroupDelete',
+  'tierTokenLooks',
 ] as const satisfies readonly (keyof Api)[];
 
 /** Fails to compile if `Api` gains or loses a method that this list does not follow. */

@@ -260,6 +260,8 @@ export const SPECS: readonly TableSpec[] = [
   lootSpec('prospecting_loot_template', 'Prospecting', 'What prospecting this ore gives.', 'item'),
   lootSpec('milling_loot_template', 'Milling', 'What milling this herb gives.', 'item'),
   // ---- On their own
+  // The CoA fork keys this table by the group and the reference list too
+  { ...lootSpec('creature_loot_template', 'Creature loot lists', 'What creatures drop, by loot id (the lootid of the creature template). The Loot tab of the NPC editor edits the list of one creature; tier set drops write here. Keep a list in one of the two places.', 'standalone'), pk: ['Entry', 'Item', 'Reference', 'GroupId'] },
   lootSpec('reference_loot_template', 'Reference loot lists', 'Shared lists other loot tables point at.', 'standalone'),
   lootSpec('fishing_loot_template', 'Fishing loot', 'What fishing gives in an area (the entry is the area id).', 'standalone'),
   lootSpec('mail_loot_template', 'Mail loot', 'Items a mail template sends (the entry is the mail template id).', 'standalone'),
@@ -300,6 +302,23 @@ export const SPECS: readonly TableSpec[] = [
         int(`BroadcastTextID${i}`, `Line ${i + 1} broadcast text`, { group: 'Advanced', zero: 'none' }),
       ];
     }).flat(),
+  },
+  {
+    table: 'item_dbc', title: 'Client item rows', blurb: 'The row the client is sent for an item the game files do not have: its class, slot and look.', owner: 'standalone',
+    scope: ['ID'], pk: ['ID'], multi: false,
+    fields: [
+      int('ClassID', 'Item class'), int('SubclassID', 'Item subclass'), int('Sound_Override_Subclassid', 'Sound subclass', { group: 'Advanced' }), int('Material', 'Material', { group: 'Advanced' }),
+      int('DisplayInfoID', 'Look (ItemDisplayInfo)'), int('InventoryType', 'Worn in'), int('SheatheType', 'Sheathe', { group: 'Advanced' }),
+    ],
+  },
+  {
+    table: 'itemextendedcost_dbc', title: 'Extended costs (server)', blurb: 'What a vendor asks for besides gold: honor, arena points or items. The server reads these rows over ItemExtendedCost.dbc (the client reads its own file).', owner: 'standalone',
+    scope: ['ID'], pk: ['ID'], multi: false,
+    fields: [
+      int('HonorPoints', 'Honor points'), int('ArenaPoints', 'Arena points'), int('ArenaBracket', 'Arena bracket', { group: 'Advanced' }),
+      ...[1, 2, 3, 4, 5].map((i) => ref(`ItemID_${i}`, `Item ${i}`, 'item')), ...[1, 2, 3, 4, 5].map((i) => int(`ItemCount_${i}`, `Count of item ${i}`)),
+      int('RequiredArenaRating', 'Arena rating', { group: 'Advanced' }), int('ItemPurchaseGroup', 'Purchase group', { group: 'Advanced' }),
+    ],
   },
   {
     table: 'page_text', title: 'Book pages', blurb: 'The pages of books, notes and signs; each page points at the next.', owner: 'standalone',
@@ -484,6 +503,40 @@ export const SPECS: readonly TableSpec[] = [
     scope: ['spell_id'], pk: ['spell_id', 'ScriptName'], multi: true,
     fields: [text('ScriptName', 'Script name', { help: 'Must match a script the server was built with; the server logs and ignores unknown names.' })],
     blank: { ScriptName: '' },
+  },
+  {
+    table: 'coa_world_boss_level', title: 'World boss levels', blurb: 'The health and damage a CoA world boss gets on each difficulty (read by mod-coa-raid-difficulty).', owner: 'standalone',
+    scope: ['entry'], pk: ['entry', 'difficulty'], multi: true,
+    fields: [
+      int('difficulty', 'Difficulty', { min: 0, max: 255 }), int('health', 'Health', { min: 0 }),
+      float('damage_pct', 'Damage (% of base)'), text('note', 'Note'),
+    ],
+    blank: { difficulty: '0', health: '0', damage_pct: '100', note: '' },
+    next: (rows) => ({ difficulty: String(rows.length) }),
+  },
+  {
+    table: 'pool_template', title: 'Spawn pools', blurb: 'A pool picks at most max_limit of its members to be in the world at a time (gathering nodes, rare spawns).', owner: 'standalone',
+    scope: ['entry'], pk: ['entry'], multi: false, search: ['description'], nameColumn: 'description',
+    fields: [int('max_limit', 'Members out at once', { min: 1 }), text('description', 'Note', { nullable: true })],
+    blank: { max_limit: '1', description: '' },
+  },
+  {
+    table: 'pool_creature', title: 'Pool creature spawns', blurb: 'Puts a creature spawn (by guid) in a pool.', owner: 'standalone',
+    scope: ['guid'], pk: ['guid'], multi: false, search: ['description'], nameColumn: 'description',
+    fields: [int('pool_entry', 'Pool'), float('chance', 'Chance (%)', { zero: 'equal share' }), text('description', 'Note', { nullable: true })],
+    blank: { pool_entry: '0', chance: '0', description: '' },
+  },
+  {
+    table: 'pool_gameobject', title: 'Pool object spawns', blurb: 'Puts an object spawn (by guid), such as a gathering node, in a pool.', owner: 'standalone',
+    scope: ['guid'], pk: ['guid'], multi: false, search: ['description'], nameColumn: 'description',
+    fields: [int('pool_entry', 'Pool'), float('chance', 'Chance (%)', { zero: 'equal share' }), text('description', 'Note', { nullable: true })],
+    blank: { pool_entry: '0', chance: '0', description: '' },
+  },
+  {
+    table: 'pool_pool', title: 'Pools in pools', blurb: 'Puts a pool inside a mother pool.', owner: 'standalone',
+    scope: ['pool_id'], pk: ['pool_id'], multi: false, search: ['description'], nameColumn: 'description',
+    fields: [int('mother_pool', 'Mother pool'), float('chance', 'Chance (%)', { zero: 'equal share' }), text('description', 'Note', { nullable: true })],
+    blank: { mother_pool: '0', chance: '0', description: '' },
   },
 ];
 

@@ -18,6 +18,9 @@ import { createAuthoringApi } from './authoring-api';
 import { createIdsApi } from './ids-api';
 import { createTablesApi } from './tables-api';
 import { createDbcApi } from './dbc-api';
+import { createSyncApi } from './sync-api';
+import { createModelWizardApi } from './modelwizard-api';
+import { createTierSetsApi } from './tiersets-api';
 import type { ApiDeps } from './deps';
 import { createServices } from './services';
 
@@ -37,9 +40,10 @@ export type { DevDb } from '../../core/db/dev-db';
 export function createApi(deps: ApiDeps): Api {
   const services = createServices(deps);
   const exportApi = createExportApi(services);
+  const connectionApi = createConnectionApi(services);
 
   return {
-    ...createConnectionApi(services),
+    ...connectionApi,
     ...createLookupApi(services),
     ...createQuestsApi(services),
     ...createMapApi(services),
@@ -58,5 +62,8 @@ export function createApi(deps: ApiDeps): Api {
     ...createIdsApi(services),
     ...createTablesApi(services),
     ...createDbcApi(services, exportApi.exportProject),
+    ...createTierSetsApi(services),
+    ...createModelWizardApi(services),
+    ...createSyncApi(services, deps, { connect: connectionApi.connect, previewChanges: exportApi.previewChanges }),
   };
 }

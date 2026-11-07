@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { RawRow } from '../../core/db/types';
+import { nextExportSequence } from '../../core/export/sequence';
 import { patchFileName, renderPatch, renderStatement, revertFileName } from '../../core/export/render-patch';
 import { rowsOrNone } from '../../core/links/context';
 import { applyPatchInMemory } from '../../core/roundtrip/apply';
@@ -23,21 +24,7 @@ import { TITLE_FIELD, textOf } from './quests-api';
 const CREATURE_TABLE = 'creature_template';
 const QUEST_GIVER_BIT = 2;
 
-/**
- * The number for the next export on `date`: one past the highest `rev_<date>_<nn>_…` already in the folder
- * (a patch's revert file counts too) and one past the last this session wrote, starting at 01. The number
- * is shared by every kind of export, as the updates of one day are numbered together. Counting the files
- * instead sent a new export to an old name as soon as an earlier one was moved out of the folder,
- * overwriting what was left.
- */
-export function nextExportSequence(existing: readonly string[], date: string, writtenBefore = 0): number {
-  const own = new RegExp(`^rev_${date}_(\\d+)_`);
-  const onDisk = existing.reduce((highest, name) => {
-    const found = own.exec(name);
-    return found ? Math.max(highest, Number(found[1])) : highest;
-  }, 0);
-  return Math.max(onDisk, writtenBefore) + 1;
-}
+export { nextExportSequence };
 
 /** Exporting: the quest and project patches, previewing them, test commands, and applying to the dev database */
 export function createExportApi(s: Services): ExportApi {

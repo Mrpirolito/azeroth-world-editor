@@ -17,6 +17,9 @@ import type { UpdatesApi } from './updates';
 import type { IdsApi } from './ids';
 import type { TablesApi } from './tables';
 import type { DbcApi } from './dbc';
+import type { SyncApi } from './sync';
+import type { TierSetsApi } from './tiersets';
+import type { ModelWizardApi } from './modelwizard';
 
 /** Everything the renderer can ask the main process to do: every area's calls */
 export interface Api
@@ -38,4 +41,7 @@ export interface Api
     UpdatesApi,
     IdsApi,
     TablesApi,
-    DbcApi {}
+    DbcApi,
+    SyncApi,
+    TierSetsApi,
+    ModelWizardApi {}

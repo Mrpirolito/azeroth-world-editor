@@ -1,0 +1,86 @@
+.tier-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.tier-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.tier-tabs button {
+  padding: 6px 12px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.tier-tabs button[aria-current='true'] {
+  border-bottom-color: var(--accent);
+}
+
+.tier-piece {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tier-drops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tier-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px dashed var(--border-soft);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tier-drop--on {
+  border-color: var(--accent);
+}
+
+.tier-drop input[type='file'] {
+  max-width: 220px;
+}
+
+.tier-drop__error {
+  color: var(--danger, #c0392b);
+}
+
+.tier-report {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.tier-report--error {
+  color: var(--danger, #c0392b);
+}
+
+.tier-bonus {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+}
+
+.tier-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}

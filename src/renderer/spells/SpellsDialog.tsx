@@ -3,12 +3,14 @@ import { trapTab } from '../components/trap-tab';
 import { ClientPatchPanel } from './ClientPatchPanel';
 import { DbcBrowser } from './DbcBrowser';
 import { SpellEditor } from './SpellEditor';
+import { TierSetsPanel } from '../tiersets/TierSetsPanel';
 import '../views/ProjectDialog.css';
 import '../tables/sheets.css';
 import './spells.css';
 
 const VIEWS = [
   { id: 'spells', label: 'Spells' },
+  { id: 'tiersets', label: 'Tier Sets' },
   { id: 'tables', label: 'Client tables' },
   { id: 'export', label: 'Export' },
 ] as const;
@@ -46,6 +48,7 @@ export function SpellsDialog({ onClose }: { onClose(): void }): React.JSX.Elemen
           </nav>
           <div className="tables-dialog__main" role="region" aria-label={VIEWS.find((v) => v.id === view)!.label}>
             {view === 'spells' && <SpellEditor />}
+            {view === 'tiersets' && <TierSetsPanel />}
             {view === 'tables' && <DbcBrowser />}
             {view === 'export' && <ClientPatchPanel />}
           </div>

@@ -146,7 +146,7 @@ describe.skipIf(!dbcDir || !existsSync(join(dbcDir, 'Spell.dbc')))('the server f
     const source = readFileSync(serverSrc!, 'utf8');
     const fmt = (name: string): string => new RegExp(`${name}\\[\\] = "([^"]+)"`).exec(source)![1]!;
     const pairs: [string, string][] = [['Spell.dbc', 'SpellEntryfmt'], ['SpellRange.dbc', 'SpellRangefmt'], ['SpellCastTimes.dbc', 'SpellCastTimefmt'], ['SpellDuration.dbc', 'SpellDurationfmt'],
-      ['SpellRadius.dbc', 'SpellRadiusfmt'], ['Item.dbc', 'Itemfmt'], ['ItemDisplayInfo.dbc', 'ItemDisplayTemplateEntryfmt'], ['Faction.dbc', 'FactionEntryfmt'], ['AreaTable.dbc', 'AreaTableEntryfmt']];
+      ['SpellRadius.dbc', 'SpellRadiusfmt'], ['Item.dbc', 'Itemfmt'], ['ItemDisplayInfo.dbc', 'ItemDisplayTemplateEntryfmt'], ['Faction.dbc', 'FactionEntryfmt'], ['AreaTable.dbc', 'AreaTableEntryfmt'], ['CreatureModelData.dbc', 'CreatureModelDatafmt'], ['CreatureDisplayInfo.dbc', 'CreatureDisplayInfofmt']];
     for (const [file, name] of pairs) {
       const server = fmt(name);
       const mine = layoutOf(file)!.format;

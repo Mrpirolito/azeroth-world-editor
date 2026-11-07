@@ -5,6 +5,8 @@ import type { EntityOrigin } from './entity';
 import { npcSceneSchema } from '../scripts/npc-scenes';
 import { rowSetSchema, type RowSet } from '../tables/types';
 import { dbcEditSchema, type DbcEdit } from '../dbc/edits';
+import { clientFileSchema, tierSetSchema, type ClientFile, type TierSet } from '../tiersets/model';
+import { tokenGroupSchema, type TokenGroup } from '../tiersets/token-model';
 
 /**
  * New NPCs and objects a quest needs, and where they stand. Stored in the quest's values under
@@ -421,6 +423,12 @@ export interface ProjectEntities {
   rowsets?: RowSet[];
   /** Changes to the server's DBC files (spells...), held whole by record; absent in projects saved before they existed */
   dbcEdits?: DbcEdit[];
+  /** Tier sets: the author's definition of each (their items, rows and DBC records are generated from it when it is saved) */
+  tierSets?: TierSet[];
+  /** Token groups: the items tier sets are bought with, and the bosses that drop them */
+  tokenGroups?: TokenGroup[];
+  /** Files the client patch carries (the textures and models of tier sets) */
+  clientFiles?: ClientFile[];
 }
 
 export type QuestEntities = ProjectEntities;
@@ -431,7 +439,7 @@ export const EMPTY_ENTITIES: ProjectEntities = { npcs: [], objects: [], items: [
 export const storeSize = (store: ProjectEntities): number => store.npcs.length + store.objects.length + store.items.length + (store.rowsets?.length ?? 0);
 
 /** The schema a whole store is checked against when the window sends it. */
-export const projectEntitiesSchema = z.object({ npcs: z.array(npcSchema), objects: z.array(objectSchema), items: z.array(itemSchema), rowsets: z.array(rowSetSchema).optional(), dbcEdits: z.array(dbcEditSchema).optional() });
+export const projectEntitiesSchema = z.object({ npcs: z.array(npcSchema), objects: z.array(objectSchema), items: z.array(itemSchema), rowsets: z.array(rowSetSchema).optional(), dbcEdits: z.array(dbcEditSchema).optional(), tierSets: z.array(tierSetSchema).optional(), tokenGroups: z.array(tokenGroupSchema).optional(), clientFiles: z.array(clientFileSchema).optional() });
 
 /** Whether a stored entity was made in the project or is an existing one edited here */
 export function originOf(entity: { origin: StoredOrigin }): EntityOrigin {
@@ -444,6 +452,9 @@ const byOrigin = (store: ProjectEntities, kind: EntityOrigin): ProjectEntities =
   items: store.items.filter((i) => i.origin.kind === kind),
   ...(store.rowsets ? { rowsets: store.rowsets } : {}),
   ...(store.dbcEdits ? { dbcEdits: store.dbcEdits } : {}),
+  ...(store.tierSets ? { tierSets: store.tierSets } : {}),
+  ...(store.tokenGroups ? { tokenGroups: store.tokenGroups } : {}),
+  ...(store.clientFiles ? { clientFiles: store.clientFiles } : {}),
 });
 
 /** The store's entities made in the project */
@@ -469,9 +480,13 @@ export function readProjectEntities(raw: unknown): ProjectEntities {
   const record = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   const rowsets = validItems(rowSetSchema, record.rowsets);
   const dbcEdits = validItems(dbcEditSchema, record.dbcEdits);
+  const tierSets = validItems(tierSetSchema, record.tierSets);
+  const tokenGroups = validItems(tokenGroupSchema, record.tokenGroups);
+  const clientFiles = validItems(clientFileSchema, record.clientFiles);
   return {
     npcs: validItems(npcSchema, record.npcs), objects: validItems(objectSchema, record.objects), items: validItems(itemSchema, record.items),
     ...(rowsets.length > 0 ? { rowsets } : {}), ...(dbcEdits.length > 0 ? { dbcEdits } : {}),
+    ...(tierSets.length > 0 ? { tierSets } : {}), ...(tokenGroups.length > 0 ? { tokenGroups } : {}), ...(clientFiles.length > 0 ? { clientFiles } : {}),
   };
 }
 
